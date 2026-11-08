@@ -58,6 +58,7 @@ Each seam is generic: it does not mention any feature of the plugin.
 | `PublicationSuppression` | `packages/cli/src/workflows/publication/` | Keep a *published* workflow's triggers and webhooks switched off without unpublishing it. Read by the publication applier, the reconciler and startup activation. |
 | `ExecutionQueryExtensions` | `packages/@n8n/db/src/repositories/` | Add filters (through the single `ext` filter key) and extra fields (`ext` on each summary) to the executions list. |
 | `uiExtensionRegistry` | `@n8n/frontend-module-sdk` | Contribute components to the workflow card, folder card, executions filter and executions row. Filled at startup for active modules only. |
+| `parameterInputs` (slot of `uiExtensionRegistry`) | `ParameterInputList.vue` | Draw a node parameter whose `typeOptions.extensionComponent` names a component the module contributes. Without a match, n8n draws the parameter as usual. |
 | Tab options `isActive` and `dynamicRoute.query` | `@n8n/frontend-module-sdk` | A module tab that shares a route with another tab and differs by query string (the Published tab). |
 | Module registration | `module-registry.ts`, `modules.config.ts`, `modules.manifest.ts`, vite alias, tsconfig paths | Name the `extras` module so n8n loads it. These are the same lines n8n's own module scaffolder writes. |
 
@@ -192,7 +193,21 @@ flowchart TB
 A module that is not active contributes nothing, so the shell components render exactly as they do in
 vanilla n8n.
 
-## The nodes
+## The Visual Data Mapper (extension, not a node)
 
-Data Mapper and Message Template are **custom nodes**, built from `nodes/` and loaded through n8n's
-`N8N_CUSTOM_EXTENSIONS` setting. They are independent of the module and of the patch.
+The plugin ships **no node**. The Data Mapper node is the community package
+[n8n-nodes-data-mapper](https://www.npmjs.com/package/n8n-nodes-data-mapper), installed separately; it is the
+single source of truth for the mapping and for the data format.
+
+The plugin only adds the visual editor for it, through the `parameterInputs` seam. That node's **Visual
+Mapping** parameter declares `typeOptions.extensionComponent: 'extras.dataMapper'`. The frontend module
+registers a component under that name, so detection is **declarative and automatic**:
+
+- node installed, plugin on → `ParameterInputList.vue` finds the registered component and draws the mapper;
+- node installed, plugin off (or the `visualDataMapper` switch off) → n8n draws the parameter as plain JSON;
+- node not installed → there is no such parameter, so the plugin does nothing.
+
+The module keeps a copy of the node's engine under
+`packages/modules/extras/frontend/src/components/dataMapper/engine`, kept in step with the node by
+`scripts/sync-data-mapper-engine.sh`, so the editor preview reads profiles exactly as the node does at run
+time. The map is stored as the node's own JSON definition, so a workflow runs the same with the plugin absent.

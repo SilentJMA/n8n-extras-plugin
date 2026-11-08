@@ -41,21 +41,24 @@ flowchart LR
 The backend module `extras` is on by default once built. Start n8n as usual; the first start runs the
 plugin's migration.
 
-## Optional: the two nodes
+## The Visual Data Mapper node
 
-```bash
-/path/to/n8n-extras-plugin/scripts/build-nodes.sh .
-N8N_CUSTOM_EXTENSIONS=/path/to/n8n-extras-plugin/nodes/dist pnpm start
-```
+The plugin ships **no node**. The Visual Data Mapper draws for the community node
+[n8n-nodes-data-mapper](https://www.npmjs.com/package/n8n-nodes-data-mapper), installed the usual way
+(**Settings > Community nodes**, or `npm install n8n-nodes-data-mapper` in the n8n data folder). The plugin
+detects it automatically: with the module active, add a **Data Mapper** node and set **Define Mappings** to
+**Visual Mapper**. With the plugin off, the same field is plain JSON, so the node keeps working.
 
-The nodes are custom nodes loaded from a folder, so no n8n file is touched for them. To check them:
-`scripts/test-nodes.sh .`.
+The map is stored as the node's own JSON definition, so a workflow built with the visual editor runs on any
+n8n that has the community node. When you change the node's engine in its repository, run
+`scripts/sync-data-mapper-engine.sh <n8n-dir> [community-node-dir]` so the editor preview uses the same
+engine, then export.
 
 ## Docker
 
 n8n builds its own image from a checkout with `pnpm build:docker`. Apply the plugin first and build the
-image from the patched checkout. `docker/Dockerfile.extras` adds the two nodes on top of that image. It
-has **not been built or tested**; treat it as a starting point.
+image from the patched checkout: the module is then part of the image, with nothing extra to copy in. Install
+the community node inside the running container (or bake it into the image) to use the Visual Data Mapper.
 
 ## Check that it works
 

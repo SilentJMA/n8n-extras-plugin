@@ -46,20 +46,22 @@ wrong route name; and the "Automatic" run type was dropped because a helper trea
 
 ## Visual Data Mapper
 
-Added on the same base commit: the `parameterInputs` seam, the visual mapper in the frontend module, the
-`visualDataMapper` switch, and the Data Mapper node's Visual Mapper mode (engine synced with
-`n8n-nodes-data-mapper` 0.5.1). Applied to a clean checkout of the base commit, installed and built.
+A **pure extension**, with no node of its own. The plugin adds the `parameterInputs` seam, the visual mapper
+in the frontend module and the `visualDataMapper` switch. The Data Mapper node is the community package
+[n8n-nodes-data-mapper](https://www.npmjs.com/package/n8n-nodes-data-mapper); its **Visual Mapping** parameter
+declares `extensionComponent: 'extras.dataMapper'`, which the module draws. Detection is declarative: node
+installed and plugin on → the mapper draws; plugin off → plain JSON; node not installed → nothing. The
+module's engine copy is kept in step with the node by `scripts/sync-data-mapper-engine.sh`.
 
-- Nodes: 139 of 139 tests pass, including new tests for functions, saved mappings and the Visual Mapper
-  mode.
-- Backend integration: the module's 11 tests pass with the new switch.
-- Frontend: the module's 30 tests (4 new for the mapper), the SDK's 123 tests and the 78
-  `ParameterInputList` tests (2 new for the seam) pass. The new seam test fails without the seam. Module
-  lint and `vue-tsc` are clean.
-- Browser, local instance with the nodes loaded from `nodes/dist`: the mapper draws the trees, function
-  boxes and lines; selecting a function highlights its path; deleting a line is saved to the node as JSON
-  text; the node's XML output is correct.
+- Frontend: the module's 30 tests (4 for the mapper), the SDK's 123 tests and the 78 `ParameterInputList`
+  tests (2 for the seam) pass. The seam test fails without the seam. Module lint and `vue-tsc` are clean.
+- Browser, local instance with the community node `n8n-nodes-data-mapper` 0.6.0 installed: the plugin detects
+  the node and draws the mapper for its Visual Mapping field — trees, function boxes and lines; selecting a
+  function highlights its path in purple; the function editor edits inputs and outputs.
 - `scripts/apply.sh --check` passes on clean checkouts of the base commit and of `n8n@2.47.2`.
+
+The node's own tests (functions, saved mappings, the Visual Mapper mode) live in the community node
+repository and are not part of this plugin.
 
 Not verified for this change: Docker, a run on Unraid, and the editor UI typecheck of the whole app.
 
@@ -71,7 +73,8 @@ vanilla n8n was not done, so this is not proven to be unrelated.
 
 ## Not verified
 
-- **Docker.** `docker/Dockerfile.extras` was written without Docker available and has never been built.
+- **Docker.** The image is built from a patched checkout with n8n's own `pnpm build:docker`; this has never
+  been built or run here. The plugin no longer ships a Docker file of its own.
 - **The upstream-watch workflow on GitHub.** `scripts/watch-upstream.sh` was run locally against the real
   GitHub API; the Actions workflow that calls it has not run on GitHub yet.
 - **A trigger actually firing.** Pause was confirmed through the database, but no scheduled run was observed

@@ -7,9 +7,10 @@
 
 A plugin for [n8n](https://github.com/n8n-io/n8n) that adds a **Published tab**, **expandable folders**,
 **pause and resume** for published workflows, **execute from the list**, and **run tracking with filters**
-to the workflows and executions pages. It also ships two extra nodes, **Data Mapper** and
-**Message Template**, and a **visual Data Mapper**: draw lines between source and target fields, with
-functions in between.
+to the workflows and executions pages. It also adds a **Visual Data Mapper**: draw lines between source and
+target fields, with functions in between. The mapper is a pure extension — it draws for the community node
+[n8n-nodes-data-mapper](https://www.npmjs.com/package/n8n-nodes-data-mapper) when that node is installed, and
+ships no node of its own.
 
 > **Built to stay alongside n8n releases without impact.** The plugin adds its own code in new files,
 > creates its own three database tables, **changes none of n8n's tables**, makes no outbound network
@@ -32,8 +33,7 @@ functions in between.
 | **Execute from the list** | "Execute" in a published workflow's `...` menu runs the published version once, as a saved manual execution. |
 | **Pause and resume** | A button on every published workflow stops its triggers and webhooks **without unpublishing**, and starts them again. |
 | **Execution tracking** | Records who started a manual run, shows the name in the list, and adds **Run type** and **Run by** filters. |
-| **Visual Data Mapper** | Map fields by drawing lines in the Data Mapper node: a source tree, function boxes and a target tree. The map is stored as the node's JSON definition. |
-| **Data Mapper and Message Template** | Two custom nodes for mapping data between structures and rendering text, JSON, XML or files from a template. |
+| **Visual Data Mapper** | Map fields by drawing lines: a source tree, function boxes and a target tree. It draws for the installed community node [n8n-nodes-data-mapper](https://www.npmjs.com/package/n8n-nodes-data-mapper) and stores the map as that node's JSON definition. No node ships with the plugin. |
 
 ![Visual Data Mapper](docs/images/data-mapper-visual.jpg)
 
@@ -87,7 +87,7 @@ git checkout n8n@2.47.2
 pnpm install && pnpm build
 ```
 
-Needs Node 24 or newer. Full instructions, the two nodes and Docker notes are in
+Needs Node 24 or newer. Full instructions, the Visual Data Mapper and Docker notes are in
 [installation](docs/installation.md).
 
 ## Automatic updates
@@ -120,7 +120,7 @@ The full, automatically updated table is in [compatibility](docs/compatibility.m
 | Page | Contents |
 | --- | --- |
 | [Features](docs/features.md) | Every feature with screenshots. |
-| [Installation](docs/installation.md) | Apply, build, nodes, Docker, uninstall. |
+| [Installation](docs/installation.md) | Apply, build, the community node, Docker, uninstall. |
 | [Architecture](docs/architecture.md) | Seams, backend, frontend, data model, sequence diagrams. |
 | [Compatibility](docs/compatibility.md) | What it touches, switching it off, tested releases. |
 | [Updating](docs/updating.md) | Release watching and upgrading. |
@@ -135,8 +135,7 @@ The same pages are available as a wiki. [AGENT.md](AGENT.md) has guidance for au
 ```text
 overlay/    new files, mirroring n8n's paths
 patches/    core-seams.patch: the edits to existing n8n files
-scripts/    apply, check, upgrade, watch, export, build and test the nodes
-nodes/      Data Mapper and Message Template
+scripts/    apply, check, upgrade, watch, export, sync the mapper engine
 compat/     releases.tsv and MIN_VERSION
 docs/       documentation          wiki/   the same pages for the wiki
 ```
@@ -148,5 +147,7 @@ Built and tested on n8n `2.47.0` plus 39 commits; see [STATUS.md](STATUS.md) for
 
 ## License
 
-The plugin follows n8n's [Sustainable Use License](https://github.com/n8n-io/n8n/blob/master/LICENSE.md);
-the nodes are MIT. See [LICENSE.md](LICENSE.md). Not affiliated with n8n GmbH.
+The plugin follows n8n's [Sustainable Use License](https://github.com/n8n-io/n8n/blob/master/LICENSE.md).
+See [LICENSE.md](LICENSE.md). The community node
+[n8n-nodes-data-mapper](https://www.npmjs.com/package/n8n-nodes-data-mapper) is MIT and licensed in its own
+repository. Not affiliated with n8n GmbH.

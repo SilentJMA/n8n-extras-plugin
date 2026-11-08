@@ -46,4 +46,6 @@ node "$here/scripts/register-module.mjs" "$target"
 
 echo "Applied. Next:"
 echo "  pnpm install && pnpm build"
-echo "  scripts/build-nodes.sh $target   # optional: Data Mapper and Message Template nodes"
+echo ""
+echo "The Visual Data Mapper draws for the community node n8n-nodes-data-mapper."
+echo "Install that node in this n8n to use it: the plugin adds the visual, the node does the mapping."

@@ -12,6 +12,7 @@ install community packages (instance admins) can change the switches.
 | Execute from the list | "Execute" in a workflow's `...` menu. |
 | Pause and resume | The pause and resume button and the Paused badge. |
 | Execution tracking | Recording who started a manual run, the name in the list, and the two filters. |
+| Visual Data Mapper | The visual mapper for the community node's Data Mapper. When off, the map is edited as JSON. |
 
 ## Published tab
 
@@ -69,8 +70,28 @@ gains two fields:
 
 Executions from before the plugin was installed show no user.
 
-## Data Mapper and Message Template nodes
+## Visual Data Mapper
 
-Two custom nodes that load alongside n8n's own: **Data Mapper** maps and transforms data between
-structures (JSON, XML, CSV, lookup tables, array wildcards) and **Message Template** renders text, JSON,
-XML or files from an expression template. See [installation](Installation#optional-the-two-nodes).
+This is a pure extension: it adds the visual editor to the community node
+[n8n-nodes-data-mapper](https://www.npmjs.com/package/n8n-nodes-data-mapper). Install that node from npm
+(the plugin ships no node of its own); the plugin detects it and draws the mapper for its **Visual Mapping**
+field. With the node installed but the plugin off, the same field is plain JSON, so nothing breaks.
+
+In the node, set **Define Mappings** to **Visual Mapper**. Paste a **Target Profile**
+(sample JSON or XML, JSON Schema, XSD, CSV header) and optionally a **Source Profile**. Without a source
+profile, the first input item is the source structure (run the previous node first).
+
+![Visual Data Mapper](images/data-mapper-visual.jpg)
+
+- Drag a source field onto a target field to map it.
+- **Add function** adds a function box: String, Numeric (exact decimals, Sum, Count, counters), Date,
+  Language, Simple Lookup and User-Defined chains. Drag source fields onto its inputs and its outputs onto
+  target fields. A function never feeds another function directly.
+- The pencil on a target field sets a fixed value. **Auto-map** maps fields with similar names.
+- Select a line, a field or a function to edit it. Its fields, ports and lines turn purple and the other
+  lines fade.
+
+The map is stored in the node as a JSON definition (`{ "mappings": [...], "functions": [...] }`), the same
+format as **Define Mappings > Using JSON**. It runs the same with the module or the switch off; then the
+node shows the definition as JSON. The node does the mapping at run time, so a workflow built with the
+visual editor runs on any n8n that has the community node, with or without this plugin.

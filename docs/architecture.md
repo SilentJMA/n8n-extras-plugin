@@ -193,7 +193,21 @@ flowchart TB
 A module that is not active contributes nothing, so the shell components render exactly as they do in
 vanilla n8n.
 
-## The nodes
+## The Visual Data Mapper (extension, not a node)
 
-Data Mapper and Message Template are **custom nodes**, built from `nodes/` and loaded through n8n's
-`N8N_CUSTOM_EXTENSIONS` setting. They are independent of the module and of the patch.
+The plugin ships **no node**. The Data Mapper node is the community package
+[n8n-nodes-data-mapper](https://www.npmjs.com/package/n8n-nodes-data-mapper), installed separately; it is the
+single source of truth for the mapping and for the data format.
+
+The plugin only adds the visual editor for it, through the `parameterInputs` seam. That node's **Visual
+Mapping** parameter declares `typeOptions.extensionComponent: 'extras.dataMapper'`. The frontend module
+registers a component under that name, so detection is **declarative and automatic**:
+
+- node installed, plugin on → `ParameterInputList.vue` finds the registered component and draws the mapper;
+- node installed, plugin off (or the `visualDataMapper` switch off) → n8n draws the parameter as plain JSON;
+- node not installed → there is no such parameter, so the plugin does nothing.
+
+The module keeps a copy of the node's engine under
+`packages/modules/extras/frontend/src/components/dataMapper/engine`, kept in step with the node by
+`scripts/sync-data-mapper-engine.sh`, so the editor preview reads profiles exactly as the node does at run
+time. The map is stored as the node's own JSON definition, so a workflow runs the same with the plugin absent.

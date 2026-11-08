@@ -71,8 +71,8 @@ for (const [file, page] of Object.entries(PAGES)) {
 const home = `# n8n Extras Plugin
 
 A plugin for [n8n](https://github.com/n8n-io/n8n) that adds a **Published tab**, **expandable folders**,
-**pause and resume** for published workflows, **execute from the list**, and **run tracking with filters**,
-plus two extra nodes (**Data Mapper** and **Message Template**).
+**pause and resume** for published workflows, **execute from the list**, **run tracking with filters**,
+and a **Visual Data Mapper** for the community node [n8n-nodes-data-mapper](https://www.npmjs.com/package/n8n-nodes-data-mapper).
 
 > **Built to stay alongside n8n releases without impact.** It adds its own code in new files, creates its
 > own three database tables, changes none of n8n's tables, makes no outbound network calls, and every
@@ -86,7 +86,7 @@ plus two extra nodes (**Data Mapper** and **Message Template**).
 | Page | Contents |
 | --- | --- |
 | [Features](Features) | Every feature with screenshots. |
-| [Installation](Installation) | Apply, build, the two nodes, Docker, uninstall. |
+| [Installation](Installation) | Apply, build, the community node, Docker, uninstall. |
 | [Architecture](Architecture) | The seams, the modules, the data model, sequence diagrams. |
 | [Compatibility](Compatibility) | What it touches, switching it off, tested releases. |
 | [Updating](Updating) | Automatic release watching and upgrading. |

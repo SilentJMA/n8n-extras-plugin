@@ -7,12 +7,10 @@ n8n-extras-plugin/
 ├── overlay/              New files, copied into an n8n checkout (mirrors n8n's own paths)
 ├── patches/
 │   └── core-seams.patch  Edits to existing n8n files: the generic seams
-├── scripts/              apply, check, upgrade, watch, export, build-nodes, test-nodes
-├── nodes/                Data Mapper and Message Template (custom nodes) and their tests
+├── scripts/              apply, check, upgrade, watch, export, sync-data-mapper-engine
 ├── compat/               releases.tsv (check results) and MIN_VERSION
 ├── docs/                 This documentation
 ├── wiki/                 The same pages, shaped for the GitHub wiki
-├── docker/               Dockerfile.extras (untested)
 ├── UPSTREAM              The n8n commit the plugin was built and tested against
 └── AGENT.md              Guidance for automated coding agents
 ```
@@ -74,10 +72,13 @@ cd packages/frontend/editor-ui && pnpm vitest run \
 # Type checks
 cd packages/cli && pnpm exec tsc --noEmit -p tsconfig.json
 cd packages/frontend/editor-ui && pnpm typecheck
-
-# Nodes (from this repository)
-scripts/build-nodes.sh ~/n8n && scripts/test-nodes.sh ~/n8n
 ```
+
+The Visual Data Mapper draws for the community node
+[n8n-nodes-data-mapper](https://www.npmjs.com/package/n8n-nodes-data-mapper); the plugin ships no node. After
+changing the node's engine in its own repository, pull the copy the editor preview uses into the module with
+`scripts/sync-data-mapper-engine.sh ~/n8n [community-node-dir]`, then re-export. The node's own tests live in
+the community node repository.
 
 Two notes from experience:
 
