@@ -25,6 +25,7 @@ const FEATURES: Array<keyof ExtrasFeatures> = [
 	'executeFromList',
 	'pauseResume',
 	'executionTracking',
+	'visualDataMapper',
 ];
 
 onMounted(() => {

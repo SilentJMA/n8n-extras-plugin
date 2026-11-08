@@ -8,7 +8,8 @@
 A plugin for [n8n](https://github.com/n8n-io/n8n) that adds a **Published tab**, **expandable folders**,
 **pause and resume** for published workflows, **execute from the list**, and **run tracking with filters**
 to the workflows and executions pages. It also ships two extra nodes, **Data Mapper** and
-**Message Template**.
+**Message Template**, and a **visual Data Mapper**: draw lines between source and target fields, with
+functions in between.
 
 > **Built to stay alongside n8n releases without impact.** The plugin adds its own code in new files,
 > creates its own three database tables, **changes none of n8n's tables**, makes no outbound network
@@ -31,7 +32,10 @@ to the workflows and executions pages. It also ships two extra nodes, **Data Map
 | **Execute from the list** | "Execute" in a published workflow's `...` menu runs the published version once, as a saved manual execution. |
 | **Pause and resume** | A button on every published workflow stops its triggers and webhooks **without unpublishing**, and starts them again. |
 | **Execution tracking** | Records who started a manual run, shows the name in the list, and adds **Run type** and **Run by** filters. |
+| **Visual Data Mapper** | Map fields by drawing lines in the Data Mapper node: a source tree, function boxes and a target tree. The map is stored as the node's JSON definition. |
 | **Data Mapper and Message Template** | Two custom nodes for mapping data between structures and rendering text, JSON, XML or files from a template. |
+
+![Visual Data Mapper](docs/images/data-mapper-visual.jpg)
 
 Each one can be switched off in **Settings > Integrations > Plugins**. Details and more screenshots are in
 [features](docs/features.md).

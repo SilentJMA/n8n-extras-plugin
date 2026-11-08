@@ -9,8 +9,8 @@
 
 | | Count | Notes |
 | --- | --- | --- |
-| New files | about 46 | Backend module, frontend module, one migration, the seam registries, tests. Nothing in n8n is overwritten. |
-| Existing n8n files edited | 29 | Small, generic seams plus tests. See [architecture](architecture.md#the-seams). |
+| New files | 61 | Backend module, frontend module (including the visual Data Mapper), one migration, the seam registries, tests. Nothing in n8n is overwritten. |
+| Existing n8n files edited | 30 | Small, generic seams plus tests. See [architecture](architecture.md#the-seams). |
 | Lines of registration added by script | 7 files | Module names, alias, manifest. Written by `scripts/register-module.mjs`, by anchor. |
 | n8n database tables altered | **0** | The plugin creates three of its own tables. |
 | Outbound network calls | **0** | Everything is n8n's own REST API on the same instance. |

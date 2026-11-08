@@ -60,6 +60,7 @@ describe('GET /extras/state', () => {
 				executeFromList: true,
 				pauseResume: true,
 				executionTracking: true,
+				visualDataMapper: true,
 			},
 			pausedWorkflowIds: [],
 		});

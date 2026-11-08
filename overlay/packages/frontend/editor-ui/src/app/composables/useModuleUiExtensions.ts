@@ -14,5 +14,8 @@ export function useModuleUiExtensions() {
 		folderCardContent: computed(() => uiExtensionRegistry.get('folderCardContent')),
 		executionFilterFields: computed(() => uiExtensionRegistry.get('executionFilterFields')),
 		executionRowCells: computed(() => uiExtensionRegistry.get('executionRowCells')),
+		/** The component that draws a parameter with this `typeOptions.extensionComponent`, if any. */
+		parameterInput: (name: unknown) =>
+			typeof name === 'string' ? uiExtensionRegistry.getParameterInput(name) : undefined,
 	};
 }

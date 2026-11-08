@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue';
 
-import { clear, get, registerAll } from './uiExtensionRegistry';
+import { clear, get, getParameterInput, registerAll } from './uiExtensionRegistry';
 
 const Stub = defineComponent({ render: () => null });
 
@@ -33,5 +33,22 @@ describe('uiExtensionRegistry', () => {
 		registerAll({ folderCardToggle: Stub });
 
 		expect(get('folderCardToggle')[0]).toBe(Stub);
+	});
+
+	it('finds a parameter input by name across modules', () => {
+		const Other = defineComponent({ render: () => null });
+
+		registerAll({ parameterInputs: { 'first.input': Stub } });
+		registerAll({ parameterInputs: { 'second.input': Other } });
+
+		expect(getParameterInput('first.input')).toBe(Stub);
+		expect(getParameterInput('second.input')).toBe(Other);
+	});
+
+	it('has no parameter input for an unknown or inherited name', () => {
+		registerAll({ parameterInputs: { known: Stub } });
+
+		expect(getParameterInput('unknown')).toBeUndefined();
+		expect(getParameterInput('constructor')).toBeUndefined();
 	});
 });

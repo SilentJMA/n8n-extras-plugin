@@ -82,7 +82,8 @@ export const ExtrasModule = defineFrontendModule({
 	// Must match the backend module id: both gate off `/rest/module-settings`.
 	id: MODULE_ID,
 	name: 'Extras',
-	description: 'Published tab, expandable folders, pause and resume, and run tracking',
+	description:
+		'Published tab, expandable folders, pause and resume, run tracking and the visual Data Mapper',
 	icon: 'puzzle',
 
 	routes: [
@@ -136,5 +137,11 @@ export const ExtrasModule = defineFrontendModule({
 		executionRowCells: [
 			defineAsyncComponent(async () => await import('./components/ExecutionRunBy.vue')),
 		],
+		// Draws the Data Mapper node's `visualMapping` parameter (`typeOptions.extensionComponent`).
+		parameterInputs: {
+			'extras.dataMapper': defineAsyncComponent(
+				async () => await import('./components/dataMapper/DataMapperParameter.vue'),
+			),
+		},
 	},
 });

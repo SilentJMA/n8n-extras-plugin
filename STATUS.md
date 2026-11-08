@@ -44,6 +44,25 @@ Bugs found by this pass and fixed (each has a test): the list ignored query-only
 filter; a status filter did not search inside folders on a project page; the folder content linked to a
 wrong route name; and the "Automatic" run type was dropped because a helper treated `false` as empty.
 
+## Visual Data Mapper
+
+Added on the same base commit: the `parameterInputs` seam, the visual mapper in the frontend module, the
+`visualDataMapper` switch, and the Data Mapper node's Visual Mapper mode (engine synced with
+`n8n-nodes-data-mapper` 0.5.1). Applied to a clean checkout of the base commit, installed and built.
+
+- Nodes: 139 of 139 tests pass, including new tests for functions, saved mappings and the Visual Mapper
+  mode.
+- Backend integration: the module's 11 tests pass with the new switch.
+- Frontend: the module's 30 tests (4 new for the mapper), the SDK's 123 tests and the 78
+  `ParameterInputList` tests (2 new for the seam) pass. The new seam test fails without the seam. Module
+  lint and `vue-tsc` are clean.
+- Browser, local instance with the nodes loaded from `nodes/dist`: the mapper draws the trees, function
+  boxes and lines; selecting a function highlights its path; deleting a line is saved to the node as JSON
+  text; the node's XML output is correct.
+- `scripts/apply.sh --check` passes on clean checkouts of the base commit and of `n8n@2.47.2`.
+
+Not verified for this change: Docker, a run on Unraid, and the editor UI typecheck of the whole app.
+
 ## Known flakiness
 
 On the first, cold-cache run of the editor UI tests, a few tests timed out at 5 seconds, in files the plugin

@@ -5,6 +5,7 @@ export const EXTRAS_FEATURES = [
 	'executeFromList',
 	'pauseResume',
 	'executionTracking',
+	'visualDataMapper',
 ] as const;
 
 export type ExtrasFeature = (typeof EXTRAS_FEATURES)[number];
@@ -16,4 +17,5 @@ export const DEFAULT_EXTRAS_FEATURES: ExtrasFeatures = {
 	executeFromList: true,
 	pauseResume: true,
 	executionTracking: true,
+	visualDataMapper: true,
 };

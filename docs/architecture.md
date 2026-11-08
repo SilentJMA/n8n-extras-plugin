@@ -58,6 +58,7 @@ Each seam is generic: it does not mention any feature of the plugin.
 | `PublicationSuppression` | `packages/cli/src/workflows/publication/` | Keep a *published* workflow's triggers and webhooks switched off without unpublishing it. Read by the publication applier, the reconciler and startup activation. |
 | `ExecutionQueryExtensions` | `packages/@n8n/db/src/repositories/` | Add filters (through the single `ext` filter key) and extra fields (`ext` on each summary) to the executions list. |
 | `uiExtensionRegistry` | `@n8n/frontend-module-sdk` | Contribute components to the workflow card, folder card, executions filter and executions row. Filled at startup for active modules only. |
+| `parameterInputs` (slot of `uiExtensionRegistry`) | `ParameterInputList.vue` | Draw a node parameter whose `typeOptions.extensionComponent` names a component the module contributes. Without a match, n8n draws the parameter as usual. |
 | Tab options `isActive` and `dynamicRoute.query` | `@n8n/frontend-module-sdk` | A module tab that shares a route with another tab and differs by query string (the Published tab). |
 | Module registration | `module-registry.ts`, `modules.config.ts`, `modules.manifest.ts`, vite alias, tsconfig paths | Name the `extras` module so n8n loads it. These are the same lines n8n's own module scaffolder writes. |
 

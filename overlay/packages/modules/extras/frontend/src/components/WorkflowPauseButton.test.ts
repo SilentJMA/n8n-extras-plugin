@@ -17,6 +17,7 @@ vi.mock('../extras.api', async (importOriginal) => ({
 			executeFromList: true,
 			pauseResume: true,
 			executionTracking: true,
+			visualDataMapper: true,
 		},
 		pausedWorkflowIds: [],
 	}),

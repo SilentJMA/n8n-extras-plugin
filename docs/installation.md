@@ -51,6 +51,10 @@ N8N_CUSTOM_EXTENSIONS=/path/to/n8n-extras-plugin/nodes/dist pnpm start
 The nodes are custom nodes loaded from a folder, so no n8n file is touched for them. To check them:
 `scripts/test-nodes.sh .`.
 
+The visual mapper is part of the frontend module: with the module active, set **Define Mappings** to
+**Visual Mapper** in a Data Mapper node. After changing the node's engine files, run
+`scripts/sync-data-mapper-engine.sh <n8n-dir>` so the editor uses the same engine, then export.
+
 ## Docker
 
 n8n builds its own image from a checkout with `pnpm build:docker`. Apply the plugin first and build the

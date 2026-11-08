@@ -1,4 +1,4 @@
-import { shallowReactive } from 'vue';
+import { shallowReactive, type Component } from 'vue';
 
 import type { ModuleUiExtensions } from '../types/uiExtension';
 
@@ -22,6 +22,7 @@ const contributions: Contributions = shallowReactive({
 	folderCardContent: [],
 	executionFilterFields: [],
 	executionRowCells: [],
+	parameterInputs: [],
 });
 
 export function registerAll(extensions: ModuleUiExtensions): void {
@@ -35,6 +36,14 @@ export function registerAll(extensions: ModuleUiExtensions): void {
 
 export function get<K extends keyof ModuleUiExtensions>(slot: K): Contributions[K] {
 	return contributions[slot];
+}
+
+/** The component that draws parameters with this `typeOptions.extensionComponent` name, if any. */
+export function getParameterInput(name: string): Component | undefined {
+	for (const components of contributions.parameterInputs) {
+		if (Object.prototype.hasOwnProperty.call(components, name)) return components[name];
+	}
+	return undefined;
 }
 
 /** Test isolation only. */

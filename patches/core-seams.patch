@@ -870,6 +870,46 @@ index fabcd3f550..8ae602cb83 100644
  	if (!isEmpty(filter.metadata)) {
  		queryFilter.metadata = filter.metadata;
  	}
+diff --git a/packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue b/packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+index 50899c9b47..3246a60e0d 100644
+--- a/packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
++++ b/packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+@@ -39,6 +39,7 @@ import ImportCurlParameter from './ImportCurlParameter.vue';
+ import MultipleParameter from './MultipleParameter.vue';
+ import ParameterInputFull from './ParameterInputFull.vue';
+ import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
++import { useModuleUiExtensions } from '@/app/composables/useModuleUiExtensions';
+ 
+ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+ import { useAiGateway } from '@/app/composables/useAiGateway';
+@@ -108,6 +109,8 @@ const emit = defineEmits<{
+ 
+ const nodeTypesStore = useNodeTypesStore();
+ const ndvStore = injectNDVStore();
++// Components from active modules that draw a parameter, named by `typeOptions.extensionComponent`.
++const { parameterInput } = useModuleUiExtensions();
+ const workflowDocumentStore = injectWorkflowDocumentStore();
+ 
+ const message = useMessage();
+@@ -973,6 +976,18 @@ watch(
+ 					@click="deleteOption(item.parameter.name)"
+ 				></N8nIconButton>
+ 			</div>
++			<component
++				:is="parameterInput(item.parameter.typeOptions?.extensionComponent)"
++				v-else-if="parameterInput(item.parameter.typeOptions?.extensionComponent)"
++				class="parameter-item"
++				:parameter="item.parameter"
++				:value="getParameterValue(item.parameter.name)"
++				:path="item.path"
++				:node="node"
++				:is-read-only="isReadOnly"
++				:input-items="ndvStore.ndvInputDataWithPinnedData"
++				@value-changed="valueChanged"
++			/>
+ 			<ResourceMapper
+ 				v-else-if="item.parameter.type === 'resourceMapper'"
+ 				:key="node?.name"
 diff --git a/packages/workflow/src/interfaces.ts b/packages/workflow/src/interfaces.ts
 index b7d8aa259e..d0033ce321 100644
 --- a/packages/workflow/src/interfaces.ts

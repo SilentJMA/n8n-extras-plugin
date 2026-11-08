@@ -6,6 +6,8 @@ export type ExtrasFeatures = {
 	executeFromList: boolean;
 	pauseResume: boolean;
 	executionTracking: boolean;
+	/** Missing when the backend is older than this switch. */
+	visualDataMapper?: boolean;
 };
 
 export type ExtrasState = {
@@ -19,6 +21,7 @@ export const DEFAULT_FEATURES: ExtrasFeatures = {
 	executeFromList: true,
 	pauseResume: true,
 	executionTracking: true,
+	visualDataMapper: true,
 };
 
 export async function fetchState(context: IRestApiContext) {

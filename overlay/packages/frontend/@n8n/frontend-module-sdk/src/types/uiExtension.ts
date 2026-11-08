@@ -55,6 +55,11 @@ export type WorkflowCardMenuContribution = {
  *   `update:modelValue`. Rendered inside the executions filter. The object is sent to the backend as
  *   the `ext` filter key.
  * - `executionRowCells` — props `{ execution }`; rendered next to the mode icon in an execution row.
+ * - `parameterInputs` — components that draw a node parameter, by name. A parameter whose
+ *   `typeOptions.extensionComponent` names one is drawn by it instead of the default input. Props
+ *   `{ parameter, value, path, node, isReadOnly, inputItems }` (`inputItems`: the input items of the
+ *   open node, empty before a run); emits `valueChanged` with `{ name, node, value }` like the
+ *   built-in parameter inputs. Without a matching component the parameter is drawn as usual.
  */
 export type ModuleUiExtensions = {
 	workflowCardActions?: Component[];
@@ -63,4 +68,5 @@ export type ModuleUiExtensions = {
 	folderCardContent?: Component;
 	executionFilterFields?: Component[];
 	executionRowCells?: Component[];
+	parameterInputs?: Record<string, Component>;
 };

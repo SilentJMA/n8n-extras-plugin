@@ -31,12 +31,14 @@ import {
 	type ProfileFormat,
 } from './profile';
 import { buildDropRules, csvText, executeVisual, getProfileFields, orderByProfile, visualProperties } from './visual';
+import type { MapFunction } from './function-catalog';
+import { applyDefinition, readMapDefinition, type FunctionContext } from './functions';
 import { jsonToXml, parseXml, xmlToJson, XmlParseError } from './xml';
 
 type InputSource = 'json' | 'field' | 'binary';
 type InputFormat = 'auto' | 'json' | 'xml';
 type OutputFormat = 'json' | 'xml' | 'csv' | 'xmlFile' | 'jsonFile' | 'csvFile';
-type DefinitionMode = 'fields' | 'json' | 'auto';
+type DefinitionMode = 'fields' | 'json' | 'auto' | 'visual';
 
 interface UiMapping {
 	sourceType: 'field' | 'value' | 'profile';
@@ -240,6 +242,22 @@ const mappingFields: INodeProperties[] = [
 			'Where to write the value in the output. Each [*] matches a [*] in the source path, in order.',
 		displayOptions: show({ targetMode: ['custom'] }),
 	},
+	// Same parameter, shown while no target field is picked. Mappings saved before 0.4.2 have only a
+	// path and no Target setting, so they get the From Target Profile default. Without this, n8n
+	// drops the hidden path when it loads the workflow.
+	{
+		displayName: 'Target Path',
+		name: 'target',
+		type: 'string',
+		default: '',
+		placeholder: 'shipping.cities[*]',
+		description:
+			'Where to write the value in the output, if you do not pick a target field above. Each [*] matches a [*] in the source path, in order.',
+		displayOptions: {
+			show: { targetMode: ['profile'] },
+			hide: { targetField: [{ _cnd: { exists: true } }] },
+		},
+	},
 	...transformFields,
 	{
 		displayName: 'If Source Is Missing',
@@ -403,7 +421,7 @@ const v1Properties: INodeProperties[] = [
 				placeholder:
 					'Optional: paste the structure of the incoming data (profile component, JSON Schema, sample JSON or XML, XSD, CSV header)',
 				description: 'Optional. Describes the incoming data, so you can pick source fields from a dropdown (Source: From Source Profile) instead of typing paths.',
-				displayOptions: show({ definitionMode: ['fields'] }),
+				displayOptions: show({ definitionMode: ['fields', 'visual'] }),
 			},
 			{
 				displayName: 'Source Profile Format',
@@ -419,7 +437,7 @@ const v1Properties: INodeProperties[] = [
 					{ name: 'XSD', value: 'xsd' },
 				],
 				default: 'auto',
-				displayOptions: show({ definitionMode: ['fields'] }),
+				displayOptions: show({ definitionMode: ['fields', 'visual'] }),
 			},
 			{
 				displayName:
@@ -427,7 +445,7 @@ const v1Properties: INodeProperties[] = [
 				name: 'profileNotice',
 				type: 'notice',
 				default: '',
-				displayOptions: show({ definitionMode: ['fields', 'auto'] }),
+				displayOptions: show({ definitionMode: ['fields', 'auto', 'visual'] }),
 			},
 			{
 				displayName: 'Provide Target Profile',
@@ -447,7 +465,7 @@ const v1Properties: INodeProperties[] = [
 					},
 				],
 				default: 'paste',
-				displayOptions: show({ definitionMode: ['fields', 'auto'] }),
+				displayOptions: show({ definitionMode: ['fields', 'auto', 'visual'] }),
 			},
 			{
 				displayName: 'Target Profile',
@@ -458,7 +476,7 @@ const v1Properties: INodeProperties[] = [
 				placeholder:
 					'Paste a profile component (XML/JSON/Flat File), JSON Schema, sample JSON or XML, XSD, or a CSV header row',
 				description: 'The structure to map into. The target fields come from this.',
-				displayOptions: show({ definitionMode: ['fields', 'auto'], targetProfileSource: ['paste'] }),
+				displayOptions: show({ definitionMode: ['fields', 'auto', 'visual'], targetProfileSource: ['paste'] }),
 			},
 			{
 				displayName: 'Target Profile File Field',
@@ -469,7 +487,7 @@ const v1Properties: INodeProperties[] = [
 				hint: 'The name of the binary field that holds the uploaded profile file',
 				description:
 					'Add a Read/Write Files From Disk, Form Trigger (file upload) or HTTP Request node before this one to bring the profile in, then name its binary field here. Auto-Map uses it; the field dropdown is only available when you paste the profile.',
-				displayOptions: show({ definitionMode: ['fields', 'auto'], targetProfileSource: ['binary'] }),
+				displayOptions: show({ definitionMode: ['fields', 'auto', 'visual'], targetProfileSource: ['binary'] }),
 			},
 			{
 				displayName: 'Target Profile Format',
@@ -486,7 +504,7 @@ const v1Properties: INodeProperties[] = [
 				],
 				default: 'auto',
 				description: 'The kind of profile you provided. Detect Automatically works for most profiles.',
-				displayOptions: show({ definitionMode: ['fields', 'auto'] }),
+				displayOptions: show({ definitionMode: ['fields', 'auto', 'visual'] }),
 			},
 			{
 				displayName: 'Define Mappings',
@@ -504,6 +522,12 @@ const v1Properties: INodeProperties[] = [
 						name: 'Using JSON',
 						value: 'json',
 						description: 'Paste or reference a mapping definition, so one mapping can be reused across workflows',
+					},
+					{
+						name: 'Visual Mapper',
+						value: 'visual',
+						description:
+							'Draw lines from source fields to target fields, with functions in between. Needs the Extras plugin module; without it, edit the same definition as JSON.',
 					},
 				],
 				default: 'fields',
@@ -609,8 +633,27 @@ const v1Properties: INodeProperties[] = [
 				type: 'json',
 				default: exampleDefinition,
 				description:
-					'An array of mappings, or { "mappings": [...] }. Each mapping has "target" and either "source" or "value", plus optional "transform", "ifMissing", "default", "separator", "decimals", "dateInputFormat", "dateOutputFormat", "lookup", "lookupFallback" and "lookupDefault".',
+					'An array of mappings, or { "mappings": [...], "functions": [...] }. Each mapping has "target" and either "source" or "value", plus optional "transform", "ifMissing", "default", "separator", "decimals", "dateInputFormat", "dateOutputFormat", "lookup", "lookupFallback" and "lookupDefault". Mappings connect to functions with "toFunction"/"toKey" and "fromFunction"/"fromKey".',
 				displayOptions: show({ definitionMode: ['json'] }),
+			},
+			{
+				displayName: 'Visual Mapping',
+				name: 'visualMapping',
+				type: 'json',
+				default: '{ "mappings": [], "functions": [] }',
+				description:
+					'The map drawn in the visual mapper, stored as a JSON definition: { "mappings": [...], "functions": [...] }',
+				typeOptions: {
+					// Drawn by the module component of this name when the Extras plugin is active.
+					extensionComponent: 'extras.dataMapper',
+					dataMapper: {
+						sourceProfileParameter: 'sourceProfile',
+						sourceFormatParameter: 'sourceProfileFormat',
+						targetProfileParameter: 'targetProfile',
+						targetFormatParameter: 'targetProfileFormat',
+					},
+				},
+				displayOptions: show({ definitionMode: ['visual'] }),
 			},
 			// Shown only where auto-map runs: Auto-Map mode, or Auto-Map Remaining Target Fields.
 			{ ...autoOptionsProperty, displayOptions: show({ definitionMode: ['auto'] }) },
@@ -859,27 +902,33 @@ export class DataMapper implements INodeType {
 			(this.getNodeParameter('csvOptions.csvCombine', 0, true) as boolean) !== false;
 		const csvRecords: Array<{ mapped: Record<string, unknown>; index: number }> = [];
 		let csvProfile: Profile | undefined;
+		const functionContext = createFunctionContext(this);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const input = await readInput(this, items[i], i);
-				const { rules, report, profile, order } = await buildRules(this, i, input, profileCache);
+				const { rules, report, profile, order, functions, xmlRoot } = await buildRules(this, i, input, profileCache);
 				const unmapped = this.getNodeParameter('unmapped', i) as 'drop' | 'keep';
-				const start =
-					unmapped === 'keep' && input && typeof input === 'object' && !Array.isArray(input)
-						? structuredClone(input as Record<string, unknown>)
-						: {};
-				let mapped = applyMappings(input, rules, start);
-				if (order && profile) mapped = orderByProfile(mapped, profile);
-				// The report is documented as JSON-only; in XML or CSV it would end up in the document.
-				const format = this.getNodeParameter('outputFormat', i) as OutputFormat;
-				if (report && (format === 'json' || format === 'jsonFile')) mapped._autoMap = report;
-				if (combineCsv) {
-					csvRecords.push({ mapped, index: i });
-					csvProfile ??= profile;
-					continue;
+				const keepInput = unmapped === 'keep' && input && typeof input === 'object' && !Array.isArray(input);
+				const start = () => (keepInput ? structuredClone(input as Record<string, unknown>) : {});
+				// Definitions with functions can give several outputs (a Sum or Count with several groups).
+				const results = functions?.length
+					? (await applyDefinition(input, { mappings: rules, functions }, functionContext)).map((result) =>
+							Object.assign(start(), result),
+						)
+					: [applyMappings(input, rules, start())];
+				for (let mapped of results) {
+					if (order && profile) mapped = orderByProfile(mapped, profile);
+					// The report is documented as JSON-only; in XML or CSV it would end up in the document.
+					const format = this.getNodeParameter('outputFormat', i) as OutputFormat;
+					if (report && (format === 'json' || format === 'jsonFile')) mapped._autoMap = report;
+					if (combineCsv) {
+						csvRecords.push({ mapped, index: i });
+						csvProfile ??= profile;
+						continue;
+					}
+					returnData.push(await writeOutput(this, mapped, i, profile, xmlRoot));
 				}
-				returnData.push(await writeOutput(this, mapped, i, profile));
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
@@ -1050,6 +1099,10 @@ interface BuiltRules {
 	report?: IDataObject;
 	/** When true, order the mapped output by the target profile's field order (resource-mapper layout). */
 	order?: boolean;
+	/** Map functions of a JSON definition ({ "mappings": [...], "functions": [...] }). */
+	functions?: MapFunction[];
+	/** XML root to use when Root Element is empty (Visual Mapper: the root of a sample XML profile). */
+	xmlRoot?: string;
 }
 
 interface FieldTransformUi {
@@ -1086,6 +1139,45 @@ function applyFieldTransforms(ctx: IExecuteFunctions, itemIndex: number, rules: 
 	}
 }
 
+/** A JSON definition: an array of mappings, or { "mappings": [...], "functions": [...] }. */
+function readJsonDefinition(raw: unknown): BuiltRules {
+	let parsed = raw;
+	if (typeof raw === 'string') {
+		try {
+			parsed = JSON.parse(raw);
+		} catch {
+			// parseDefinition reports invalid JSON with a clear message.
+			return { rules: parseDefinition(raw) };
+		}
+	}
+	const definition = readMapDefinition(parsed);
+	return { rules: parseDefinition(definition.mappings), functions: definition.functions };
+}
+
+/** Functions that keep state: Sequential Value stores its counter with the workflow. */
+function createFunctionContext(ctx: IExecuteFunctions): FunctionContext {
+	const sequences = new Map<string, { next: number; reserved: number }>();
+	return {
+		runCache: new Map(),
+		nextSequence(keyName, batchSize) {
+			const data = ctx.getWorkflowStaticData('node');
+			const storeKey = `dataMapperSequence:${keyName}`;
+			let state = sequences.get(keyName);
+			if (!state) {
+				const last = Number(data[storeKey] ?? 0) || 0;
+				state = { next: last + 1, reserved: last };
+				sequences.set(keyName, state);
+			}
+			// Values are reserved in blocks, so a run that stops early never hands out a value twice.
+			if (state.next > state.reserved) {
+				state.reserved += Math.max(1, batchSize);
+				data[storeKey] = state.reserved;
+			}
+			return state.next++;
+		},
+	};
+}
+
 async function buildRules(
 	ctx: IExecuteFunctions,
 	itemIndex: number,
@@ -1093,7 +1185,14 @@ async function buildRules(
 	cache: Map<string, Profile | undefined>,
 ): Promise<BuiltRules> {
 	const mode = ctx.getNodeParameter('definitionMode', itemIndex) as DefinitionMode;
-	if (mode === 'json') return { rules: parseDefinition(ctx.getNodeParameter('mappingJson', itemIndex)) };
+	if (mode === 'json') return readJsonDefinition(ctx.getNodeParameter('mappingJson', itemIndex));
+	if (mode === 'visual') {
+		// Same definition format as Using JSON; the target profile orders the output, like Fill Target Fields.
+		const built = readJsonDefinition(ctx.getNodeParameter('visualMapping', itemIndex));
+		const profile = await getProfile(ctx, itemIndex, cache);
+		const xmlRoot = profile?.kind === 'sampleXml' ? profile.rootName : undefined;
+		return { ...built, profile, order: profile !== undefined, xmlRoot };
+	}
 
 	const profile = await getProfile(ctx, itemIndex, cache);
 
@@ -1188,6 +1287,7 @@ async function writeOutput(
 	mapped: Record<string, unknown>,
 	itemIndex: number,
 	profile?: Profile,
+	xmlRoot?: string,
 ): Promise<INodeExecutionData> {
 	const format = ctx.getNodeParameter('outputFormat', itemIndex) as OutputFormat;
 	const pairedItem = { item: itemIndex };
@@ -1210,7 +1310,7 @@ async function writeOutput(
 	}
 
 	const xml = jsonToXml(mapped, {
-		rootName: (ctx.getNodeParameter('rootElement', itemIndex, '') as string) || undefined,
+		rootName: (ctx.getNodeParameter('rootElement', itemIndex, '') as string) || xmlRoot,
 		declaration: ctx.getNodeParameter('xmlDeclaration', itemIndex, true) as boolean,
 		attributeKey: '$',
 		textKey: '_',

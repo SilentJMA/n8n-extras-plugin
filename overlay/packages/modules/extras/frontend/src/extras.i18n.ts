@@ -48,6 +48,216 @@ const messages = {
 	'feature.executionTracking': 'Execution tracking',
 	'feature.executionTracking.description':
 		'Record who started a manual execution, and filter executions by run type and user.',
+	'feature.visualDataMapper': 'Visual Data Mapper',
+	'feature.visualDataMapper.description':
+		'Draw lines between source and target fields in the Data Mapper node. When off, the map is edited as JSON.',
+	// Visual Data Mapper
+	'dataMapper.switchedOff':
+		'The visual mapper is switched off in Settings > Integrations > Plugins. Edit the map as JSON.',
+	'dataMapper.category.scripting': 'Custom Scripting',
+	'dataMapper.category.date': 'Date',
+	'dataMapper.category.language': 'Language',
+	'dataMapper.category.lookup': 'Lookup',
+	'dataMapper.category.numeric': 'Numeric',
+	'dataMapper.category.string': 'String',
+	'dataMapper.category.userDefined': 'User-Defined',
+	'dataMapper.function.script.label': 'Scripting',
+	'dataMapper.function.script.description':
+		'Run inline JavaScript or Python. Inputs and outputs are variables in the script.',
+	'dataMapper.function.dateFormat.label': 'Date Format',
+	'dataMapper.function.dateFormat.description':
+		'Read a date with the input mask and write it with the output mask (UTC).',
+	'dataMapper.function.currentDate.label': 'Get Current Date',
+	'dataMapper.function.currentDate.description':
+		'The current date and time. Without a mask the result is ISO 8601.',
+	'dataMapper.function.japaneseConvert.label': 'Japanese Character Conversion',
+	'dataMapper.function.japaneseConvert.description':
+		'Convert between hiragana, full-width katakana and half-width katakana.',
+	'dataMapper.function.dataTableLookup.label': 'Data Table Lookup',
+	'dataMapper.function.dataTableLookup.description':
+		'Find a row in an n8n data table. All inputs must match their columns; the first row wins.',
+	'dataMapper.function.simpleLookup.label': 'Simple Lookup',
+	'dataMapper.function.simpleLookup.description':
+		'Translate a key with a small key/value table stored in the function.',
+	'dataMapper.function.sqlLookup.label': 'SQL Lookup',
+	'dataMapper.function.sqlLookup.description':
+		'Run a SELECT with ? parameters on the database of the node credential. One output per column.',
+	'dataMapper.function.mathAbs.label': 'Math Absolute Value',
+	'dataMapper.function.mathAbs.description': 'Absolute value.',
+	'dataMapper.function.mathAdd.label': 'Math Add',
+	'dataMapper.function.mathAdd.description': 'Value + Value to Add (exact decimals).',
+	'dataMapper.function.mathSubtract.label': 'Math Subtract',
+	'dataMapper.function.mathSubtract.description': 'Value − Value to Subtract (exact decimals).',
+	'dataMapper.function.mathMultiply.label': 'Math Multiply',
+	'dataMapper.function.mathMultiply.description': 'Value × Value to Multiply (exact decimals).',
+	'dataMapper.function.mathDivide.label': 'Math Divide',
+	'dataMapper.function.mathDivide.description':
+		'Value ÷ Value to Divide, 10 decimal places, half up. Division by zero fails.',
+	'dataMapper.function.mathCeil.label': 'Math Ceil',
+	'dataMapper.function.mathCeil.description': 'Round up to a whole number.',
+	'dataMapper.function.mathFloor.label': 'Math Floor',
+	'dataMapper.function.mathFloor.description': 'Round down to a whole number.',
+	'dataMapper.function.mathPrecision.label': 'Math Set Precision',
+	'dataMapper.function.mathPrecision.description':
+		'Round half up to a number of decimal places and pad with zeros.',
+	'dataMapper.function.numberFormat.label': 'Number Format',
+	'dataMapper.function.numberFormat.description':
+		'Reformat a number with masks such as #,##0.00. The result is text.',
+	'dataMapper.function.runningTotal.label': 'Running Total',
+	'dataMapper.function.runningTotal.description': 'Cumulative total, one value for each record.',
+	'dataMapper.function.sum.label': 'Sum',
+	'dataMapper.function.sum.description': 'One total for each unique Reset Value.',
+	'dataMapper.function.count.label': 'Count',
+	'dataMapper.function.count.description':
+		'Counts records where the field exists, for each unique Reset Value.',
+	'dataMapper.function.lineItemIncrement.label': 'Line Item Increment',
+	'dataMapper.function.lineItemIncrement.description':
+		'1, 2, 3, … for each record. Restarts when the Reset Value changes.',
+	'dataMapper.function.sequentialValue.label': 'Sequential Value',
+	'dataMapper.function.sequentialValue.description':
+		'A counter that continues across executions, zero-padded to a fixed length.',
+	'dataMapper.function.leftTrim.label': 'Left Character Trim',
+	'dataMapper.function.leftTrim.description': 'Keep the rightmost N characters.',
+	'dataMapper.function.rightTrim.label': 'Right Character Trim',
+	'dataMapper.function.rightTrim.description': 'Keep the leftmost N characters.',
+	'dataMapper.function.whitespaceTrim.label': 'Whitespace Trim',
+	'dataMapper.function.whitespaceTrim.description': 'Remove leading and trailing whitespace.',
+	'dataMapper.function.stringAppend.label': 'String Append',
+	'dataMapper.function.stringAppend.description':
+		'Pad on the right to a fixed length with a repeating fill, or cut to it.',
+	'dataMapper.function.stringPrepend.label': 'String Prepend',
+	'dataMapper.function.stringPrepend.description':
+		'Pad on the left to a fixed length with a repeating fill, or cut to it.',
+	'dataMapper.function.stringConcat.label': 'String Concat',
+	'dataMapper.function.stringConcat.description':
+		'Join the inputs in order with a delimiter, optionally cut to a fixed length.',
+	'dataMapper.function.stringReplace.label': 'String Replace',
+	'dataMapper.function.stringReplace.description':
+		'Replace every match of a regular expression. $1 inserts a group.',
+	'dataMapper.function.stringRemove.label': 'String Remove',
+	'dataMapper.function.stringRemove.description': 'Remove every match of a regular expression.',
+	'dataMapper.function.toLower.label': 'String To Lower',
+	'dataMapper.function.toLower.description': 'Lowercase.',
+	'dataMapper.function.toUpper.label': 'String To Upper',
+	'dataMapper.function.toUpper.description': 'Uppercase.',
+	'dataMapper.function.stringSplit.label': 'String Split',
+	'dataMapper.function.stringSplit.description':
+		'Split on a delimiter or into fixed-length pieces. More pieces than outputs fails.',
+	'dataMapper.function.userDefined.label': 'User-Defined',
+	'dataMapper.function.userDefined.description':
+		'A chain of function steps. Inside it, one step may feed the next. Steps run in order.',
+	'dataMapper.addFunction': 'Add function',
+	'dataMapper.searchFunction': 'Search functions',
+	'dataMapper.functionsEmpty':
+		'Add a function, then drag source fields onto its inputs and its outputs onto target fields.',
+	'dataMapper.noChaining':
+		'A function output cannot feed another function. Map it to a target field, or chain the steps inside a User-Defined function.',
+	'dataMapper.editor.functionOutput': '{port} of {function}',
+	'dataMapper.editor.functionInput': '{port} of {function}',
+	'dataMapper.functionEditor.name': 'Name',
+	'dataMapper.functionEditor.cache': 'Cache results',
+	'dataMapper.functionEditor.cache.none': 'None',
+	'dataMapper.functionEditor.cache.document': 'By item',
+	'dataMapper.functionEditor.cache.map': 'By run',
+	'dataMapper.functionEditor.inputs': 'Inputs',
+	'dataMapper.functionEditor.outputs': 'Outputs',
+	'dataMapper.functionEditor.default': 'Default',
+	'dataMapper.functionEditor.column': 'Column',
+	'dataMapper.functionEditor.removePort': 'Remove',
+	'dataMapper.functionEditor.addInput': 'Add input',
+	'dataMapper.functionEditor.addOutput': 'Add output',
+	'dataMapper.functionEditor.dataType.character': 'Text',
+	'dataMapper.functionEditor.dataType.integer': 'Integer',
+	'dataMapper.functionEditor.dataType.float': 'Decimal',
+	'dataMapper.functionEditor.dataType.datetime': 'Date and time',
+	'dataMapper.functionEditor.language': 'Language',
+	'dataMapper.functionEditor.code': 'Script',
+	'dataMapper.functionEditor.codeHint':
+		'Inputs are variables with their names. Assign a value to each output variable. The script runs once for each record.',
+	'dataMapper.functionEditor.sql': 'SQL',
+	'dataMapper.functionEditor.sqlHint':
+		'Use ? for each input, in input order. Each output reads the column with its name. Set the database on the node.',
+	'dataMapper.functionEditor.dataTable': 'Data table',
+	'dataMapper.functionEditor.dataTablePlaceholder': 'Name or ID of the data table',
+	'dataMapper.functionEditor.table': 'Table',
+	'dataMapper.functionEditor.key': 'Key',
+	'dataMapper.functionEditor.value': 'Value',
+	'dataMapper.functionEditor.removeRow': 'Remove row',
+	'dataMapper.functionEditor.addRow': 'Add row',
+	'dataMapper.functionEditor.from': 'From',
+	'dataMapper.functionEditor.to': 'To',
+	'dataMapper.functionEditor.script.hiragana': 'Hiragana',
+	'dataMapper.functionEditor.script.katakanaFull': 'Katakana (full-width)',
+	'dataMapper.functionEditor.script.katakanaHalf': 'Katakana (half-width)',
+	'dataMapper.functionEditor.keyName': 'Counter name',
+	'dataMapper.functionEditor.fixedLength': 'Fixed length',
+	'dataMapper.functionEditor.batchSize': 'Batch size',
+	'dataMapper.functionEditor.delimiter': 'Delimiter',
+	'dataMapper.functionEditor.splitMode': 'Split by',
+	'dataMapper.functionEditor.splitLength': 'Fixed length',
+	'dataMapper.functionEditor.steps': 'Steps and links (JSON)',
+	'dataMapper.functionEditor.stepsHint':
+		'steps: functions in run order. links: from in:<input> or step:<step>:<output>, to step:<step>:<input> or out:<output>.',
+	'dataMapper.functionEditor.applySteps': 'Apply steps',
+	'dataMapper.functionEditor.udfShape': 'The JSON needs a steps list and a links list',
+	'dataMapper.functionEditor.delete': 'Delete function',
+	'dataMapper.source': 'Source',
+	'dataMapper.sourceFromInput': 'Source (from input)',
+	'dataMapper.target': 'Target',
+	'dataMapper.functions': 'Functions',
+	'dataMapper.searchField': 'Search for field',
+	'dataMapper.sourceEmpty':
+		'Paste a source profile above, or run the previous node to use its output',
+	'dataMapper.targetEmpty': 'Paste a target profile above to see its fields',
+	'dataMapper.addFixedValue': 'Set a fixed value',
+	'dataMapper.autoMap': 'Auto-map',
+	'dataMapper.clear': 'Clear all',
+	'dataMapper.expand': 'Open large view',
+	'dataMapper.collapse': 'Close large view',
+	'dataMapper.hint':
+		'Drag a source field onto a target field or a function input. Drag a function output onto a target field. Click a line or a function to edit it.',
+	'dataMapper.card.emptyValue': 'Empty value',
+	'dataMapper.editor.fixedValueFor': 'Fixed value →',
+	'dataMapper.editor.close': 'Close',
+	'dataMapper.editor.value': 'Value',
+	'dataMapper.editor.valuePlaceholder': 'Text, number or expression',
+	'dataMapper.editor.function': 'Function',
+	'dataMapper.editor.separator': 'Separator',
+	'dataMapper.editor.decimals': 'Decimal places',
+	'dataMapper.editor.template': 'Template',
+	'dataMapper.editor.templateHint':
+		'Use {value} for this field and {path.to.field} for other input fields',
+	'dataMapper.editor.dateInputFormat': 'Input date format',
+	'dataMapper.editor.dateOutputFormat': 'Output date format',
+	'dataMapper.editor.lookup': 'Lookup table',
+	'dataMapper.editor.lookupFallback': 'If no match',
+	'dataMapper.editor.default': 'Default value',
+	'dataMapper.editor.ifMissing': 'If source is missing',
+	'dataMapper.editor.delete': 'Delete mapping',
+	'dataMapper.transform.none': 'None',
+	'dataMapper.transform.concat': 'Concatenate',
+	'dataMapper.transform.date': 'Format date',
+	'dataMapper.transform.join': 'Join list',
+	'dataMapper.transform.lookup': 'Lookup table',
+	'dataMapper.transform.lowercase': 'Lowercase',
+	'dataMapper.transform.round': 'Round',
+	'dataMapper.transform.split': 'Split into list',
+	'dataMapper.transform.boolean': 'To boolean',
+	'dataMapper.transform.integer': 'To integer',
+	'dataMapper.transform.number': 'To number',
+	'dataMapper.transform.string': 'To string',
+	'dataMapper.transform.trim': 'Trim',
+	'dataMapper.transform.uppercase': 'Uppercase',
+	'dataMapper.ifMissing.skip': 'Leave out',
+	'dataMapper.ifMissing.null': 'Set to null',
+	'dataMapper.ifMissing.default': 'Use default',
+	'dataMapper.ifMissing.error': 'Stop with error',
+	'dataMapper.lookupFallback.keep': 'Keep original value',
+	'dataMapper.lookupFallback.default': 'Use default',
+	'dataMapper.lookupFallback.null': 'Set to null',
+	'dataMapper.lookupFallback.error': 'Stop with error',
+	'dataMapper.mappingCount.one': '{count} mapping',
+	'dataMapper.mappingCount.other': '{count} mappings',
 } as const;
 
 export type ExtrasMessageKey = keyof typeof messages;
@@ -57,4 +267,11 @@ export function t(key: ExtrasMessageKey, interpolate: Record<string, string> = {
 		(text, [name, value]) => text.replaceAll(`{${name}}`, value),
 		messages[key] as string,
 	);
+}
+
+/** For keys built at runtime, such as `dataMapper.function.<type>.label`. Unknown keys come back as-is. */
+export function tKey(key: string, interpolate: Record<string, string> = {}): string {
+	return Object.prototype.hasOwnProperty.call(messages, key)
+		? t(key as ExtrasMessageKey, interpolate)
+		: key;
 }
