@@ -78,20 +78,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build n8n from source and push the image
+      - name: Build the n8n image from source
         working-directory: n8n
+        # Build with a hostless name so n8n's dockerize script loads the image into the daemon
+        # (a registry host would make it push, and it then requires the runners image to push too).
+        # We push only the n8n image to GHCR ourselves below, so no runners image is published.
         env:
-          # A registry host in the name makes n8n's dockerize script push instead of load.
-          # The runners image keeps its default (hostless) name, so only this image is pushed.
-          IMAGE_BASE_NAME: ${{ steps.img.outputs.base }}
+          IMAGE_BASE_NAME: n8n-extras
           IMAGE_TAG: ${{ steps.img.outputs.tag }}
         run: pnpm build:docker
 
-      - name: Add the :latest tag
+      - name: Tag and push to GHCR
         run: |
-          docker buildx imagetools create \
-            -t "${{ steps.img.outputs.base }}:latest" \
-            "${{ steps.img.outputs.base }}:${{ steps.img.outputs.tag }}"
+          docker tag "n8n-extras:${{ steps.img.outputs.tag }}" "${{ steps.img.outputs.base }}:${{ steps.img.outputs.tag }}"
+          docker tag "n8n-extras:${{ steps.img.outputs.tag }}" "${{ steps.img.outputs.base }}:latest"
+          docker push "${{ steps.img.outputs.base }}:${{ steps.img.outputs.tag }}"
+          docker push "${{ steps.img.outputs.base }}:latest"
 
       - name: Summary
         run: |
