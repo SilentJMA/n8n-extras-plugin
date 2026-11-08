@@ -55,7 +55,7 @@ module's engine copy is kept in step with the node by `scripts/sync-data-mapper-
 
 - Frontend: the module's 30 tests (4 for the mapper), the SDK's 123 tests and the 78 `ParameterInputList`
   tests (2 for the seam) pass. The seam test fails without the seam. Module lint and `vue-tsc` are clean.
-- Browser, local instance with the community node `n8n-nodes-data-mapper` 0.6.0 installed: the plugin detects
+- Browser, local instance with the community node `n8n-nodes-data-mapper` 0.5.2 installed: the plugin detects
   the node and draws the mapper for its Visual Mapping field — trees, function boxes and lines; selecting a
   function highlights its path in purple; the function editor edits inputs and outputs.
 - `scripts/apply.sh --check` passes on clean checkouts of the base commit and of `n8n@2.47.2`.
