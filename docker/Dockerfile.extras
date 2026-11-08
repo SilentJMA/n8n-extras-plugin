@@ -1,0 +1,24 @@
+# UNTESTED: Docker was not available where this was written.
+#
+# Adds the extras nodes on top of an n8n image you built from a patched checkout:
+#
+#   1. scripts/apply.sh /path/to/n8n          # patch a vanilla n8n checkout
+#   2. (cd /path/to/n8n && pnpm install && pnpm build:docker)   # n8n's own image build
+#   3. scripts/build-nodes.sh /path/to/n8n    # builds nodes/dist
+#   4. docker build -f docker/Dockerfile.extras \
+#        --build-arg BASE_IMAGE=<the image from step 2> -t n8n-extras .
+#
+# The nodes live inside the n8n package directory so they can resolve `n8n-workflow`.
+ARG BASE_IMAGE=n8nio/n8n:local
+FROM ${BASE_IMAGE}
+
+# Where the n8n package is installed in the base image. Check yours with:
+#   docker run --rm --entrypoint sh <image> -c 'ls -d /usr/local/lib/node_modules/n8n'
+ARG N8N_DIR=/usr/local/lib/node_modules/n8n
+
+USER root
+COPY nodes/dist ${N8N_DIR}/extras-nodes
+RUN chown -R node:node ${N8N_DIR}/extras-nodes
+USER node
+
+ENV N8N_CUSTOM_EXTENSIONS=${N8N_DIR}/extras-nodes

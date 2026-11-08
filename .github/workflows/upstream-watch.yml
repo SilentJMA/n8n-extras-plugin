@@ -1,0 +1,62 @@
+name: Watch n8n releases
+
+# Once a day, look for a new n8n release. For each new one (latest stable and newest pre-release),
+# check that the plugin still applies, record the result, and open a pull request with it.
+# If the plugin no longer applies, open an issue instead of failing silently.
+
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: upstream-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check new n8n releases
+        id: watch
+        run: scripts/watch-upstream.sh
+
+      - name: Open a pull request with the new results
+        if: steps.watch.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="compat/$(date -u +%Y-%m-%d-%H%M)"
+          git checkout -b "$branch"
+          git add compat docs/compatibility.md
+          git commit -m "Record compatibility with new n8n releases"
+          git push -u origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "Record compatibility with new n8n releases" \
+            --body "Automatic check of new n8n releases. See docs/compatibility.md for the result of each."
+
+      - name: Open an issue when the plugin no longer applies
+        if: steps.watch.outputs.conflicts != ''
+        env:
+          CONFLICTS: ${{ steps.watch.outputs.conflicts }}
+        run: |
+          for tag in $CONFLICTS; do
+            title="Plugin does not apply to $tag"
+            if [ -z "$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')" ]; then
+              gh issue create --title "$title" \
+                --body "scripts/check-upstream.sh $tag reported a conflict. The seams in patches/core-seams.patch or an anchor in scripts/register-module.mjs needs updating. See docs/updating.md."
+            fi
+          done

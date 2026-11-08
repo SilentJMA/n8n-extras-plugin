@@ -1,0 +1,17 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"module": "node16",
+		"moduleResolution": "node16",
+		"target": "es2022",
+		"lib": ["es2022"],
+		"useUnknownInCatchVariables": false,
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"outDir": "dist",
+		"rootDir": ".",
+		"typeRoots": []
+	},
+	"include": ["DataMapper/**/*.ts", "MessageTemplate/**/*.ts"]
+}

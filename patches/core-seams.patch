@@ -1,0 +1,885 @@
+diff --git a/packages/@n8n/db/src/entities/types-db.ts b/packages/@n8n/db/src/entities/types-db.ts
+index c10348ba83..f73472a86e 100644
+--- a/packages/@n8n/db/src/entities/types-db.ts
++++ b/packages/@n8n/db/src/entities/types-db.ts
+@@ -228,6 +228,8 @@ export namespace ExecutionSummaries {
+ 		workflowVersionId: string;
+ 		isArchived: boolean;
+ 		workflowBooleanSettings: Array<{ key: string; value: boolean }>;
++		/** Filters owned by modules, read through `ExecutionQueryExtensions`. */
++		ext: Record<string, unknown>;
+ 	}>;
+ 
+ 	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
+diff --git a/packages/@n8n/db/src/repositories/execution.repository.ts b/packages/@n8n/db/src/repositories/execution.repository.ts
+index 1e22acce35..18b905a4e4 100644
+--- a/packages/@n8n/db/src/repositories/execution.repository.ts
++++ b/packages/@n8n/db/src/repositories/execution.repository.ts
+@@ -1,7 +1,7 @@
+ import { Logger, parseFlatted } from '@n8n/backend-common';
+ import { GlobalConfig } from '@n8n/config';
+ import { Time } from '@n8n/constants';
+-import { Service } from '@n8n/di';
++import { Container, Service } from '@n8n/di';
+ import { hasGlobalScope } from '@n8n/permissions';
+ import type {
+ 	FindManyOptions,
+@@ -70,6 +70,7 @@ import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boole
+ import { chunkIds } from '../utils/chunk-ids';
+ import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
+ import { separate } from '../utils/separate';
++import { ExecutionQueryExtensions } from './execution-query-extensions';
+ 
+ class PostgresLiveRowsRetrievalError extends UnexpectedError {
+ 	constructor(rows: unknown) {
+@@ -1274,7 +1275,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
+ 
+ 		const executions = this.reduceExecutionsWithAnnotations(rawExecutionsWithTags);
+ 
+-		return executions.map((execution) => this.toSummary(execution));
++		const summaries = executions.map((execution) => this.toSummary(execution));
++		await Container.get(ExecutionQueryExtensions).enrich(summaries);
++		return summaries;
+ 	}
+ 
+ 	// @tech_debt: These transformations should not be needed
+@@ -1495,6 +1498,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
+ 			}
+ 		}
+ 
++		Container.get(ExecutionQueryExtensions).applyFilters(qb, query.ext);
++
+ 		return qb;
+ 	}
+ 
+diff --git a/packages/@n8n/db/src/repositories/index.ts b/packages/@n8n/db/src/repositories/index.ts
+index fd68adf5d8..8d59256284 100644
+--- a/packages/@n8n/db/src/repositories/index.ts
++++ b/packages/@n8n/db/src/repositories/index.ts
+@@ -53,6 +53,10 @@ export {
+ 	type ResumeAttemptClaim,
+ 	type UpdateExecutionConditions,
+ } from './execution.repository';
++export {
++	ExecutionQueryExtensions,
++	type ExecutionQueryExtension,
++} from './execution-query-extensions';
+ export { FolderRepository } from './folder.repository';
+ export { FolderAccessRepository } from './folder-access.repository';
+ export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
+diff --git a/packages/cli/src/active-workflow-manager.ts b/packages/cli/src/active-workflow-manager.ts
+index 40a4f040e6..ca830f1141 100644
+--- a/packages/cli/src/active-workflow-manager.ts
++++ b/packages/cli/src/active-workflow-manager.ts
+@@ -4,7 +4,7 @@ import { WorkflowsConfig } from '@n8n/config';
+ import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
+ import { WorkflowRepository } from '@n8n/db';
+ import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+-import { Service } from '@n8n/di';
++import { Container, Service } from '@n8n/di';
+ import { ensureError } from '@n8n/utils/errors/ensure-error';
+ import chunk from 'lodash/chunk';
+ import {
+@@ -63,6 +63,7 @@ import { getErrorDescription, getErrorNodeId } from '@/workflows/utils';
+ import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
+ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+ import { formatWorkflow } from '@/workflows/workflow.formatter';
++import { PublicationSuppression } from '@/workflows/publication/publication-suppression';
+ 
+ interface QueuedActivation {
+ 	activationMode: WorkflowActivateMode;
+@@ -400,7 +401,10 @@ export class ActiveWorkflowManager {
+ 
+ 		this.isActivationInProgress = true;
+ 		try {
+-			const dbWorkflowIds = await this.workflowRepository.getAllActiveIds();
++			const suppressed = await Container.get(PublicationSuppression).suppressedIds();
++			const dbWorkflowIds = (await this.workflowRepository.getAllActiveIds()).filter(
++				(id) => !suppressed.has(id),
++			);
+ 
+ 			if (dbWorkflowIds.length === 0) return;
+ 
+diff --git a/packages/cli/src/executions/execution.service.ts b/packages/cli/src/executions/execution.service.ts
+index 5ee208286f..69b635a543 100644
+--- a/packages/cli/src/executions/execution.service.ts
++++ b/packages/cli/src/executions/execution.service.ts
+@@ -87,6 +87,7 @@ export const schemaGetExecutionsQueryFilter = {
+ 		vote: { type: 'string' },
+ 		projectId: { type: 'string' },
+ 		workflowVersionId: { type: 'string' },
++		ext: { type: 'object' },
+ 	},
+ 	$defs: {
+ 		metadata: {
+diff --git a/packages/cli/src/workflows/publication/workflow-publication-applier.ts b/packages/cli/src/workflows/publication/workflow-publication-applier.ts
+index 499b456502..b32deacbe7 100644
+--- a/packages/cli/src/workflows/publication/workflow-publication-applier.ts
++++ b/packages/cli/src/workflows/publication/workflow-publication-applier.ts
+@@ -10,7 +10,7 @@ import {
+ 	WorkflowRepository,
+ 	type WorkflowPublicationTriggerKind,
+ } from '@n8n/db';
+-import { Service } from '@n8n/di';
++import { Container, Service } from '@n8n/di';
+ import { TELEMETRY_EVENT } from '@n8n/telemetry';
+ import { ensureError } from '@n8n/utils/errors/ensure-error';
+ import type { INode, WorkflowActivateMode } from 'n8n-workflow';
+@@ -48,6 +48,7 @@ import {
+ 	type TriggerTeardownFailure,
+ } from '@/workflows/triggers/workflow-trigger-activator';
+ import { WorkflowPublishedDataService } from '@n8n/backend-services';
++import { PublicationSuppression } from './publication-suppression';
+ 
+ /** A node whose type this instance cannot load, with the loader's error. */
+ type UnresolvableNode = { node: INode; error: Error };
+@@ -131,7 +132,12 @@ export class WorkflowPublicationApplier {
+ 		// `activeVersionId` is the source of truth for activity; `active` is deprecated.
+ 		// A null `activeVersionId` means the workflow has been unpublished, so we
+ 		// reconcile its triggers down to nothing rather than to a target version.
+-		if (workflow.activeVersionId === null) {
++		// A module can suppress a published workflow (see PublicationSuppression): it keeps
++		// its `activeVersionId` but runs no triggers, so it is torn down like an unpublish.
++		if (
++			workflow.activeVersionId === null ||
++			(await Container.get(PublicationSuppression).isSuppressed(workflow.id))
++		) {
+ 			return await this.unpublish(workflow, oldVersion, record, abort);
+ 		}
+ 
+diff --git a/packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts b/packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+index 54dd48186f..e49df5041c 100644
+--- a/packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
++++ b/packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+@@ -9,7 +9,7 @@ import {
+ 	WorkflowRepository,
+ } from '@n8n/db';
+ import { OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+-import { Service } from '@n8n/di';
++import { Container, Service } from '@n8n/di';
+ import {
+ 	ActiveWorkflowTriggers,
+ 	ErrorReporter,
+@@ -24,6 +24,7 @@ import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-tri
+ import { PublishedWorkflowTriggerDeactivator } from './published-workflow-trigger-deactivator';
+ import { WorkflowPublicationLifecycleLock } from './workflow-publication-lifecycle-lock';
+ import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox-consumer';
++import { PublicationSuppression } from './publication-suppression';
+ 
+ /**
+  * The one reconciliation loop of the workflow publication service. It ticks on
+@@ -223,7 +224,10 @@ export class WorkflowPublicationReconciler {
+ 		const registered = this.activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds();
+ 		if (registered.length === 0) return [];
+ 
+-		const desired = new Set(await this.workflowRepository.getActiveIds());
++		const suppressed = await Container.get(PublicationSuppression).suppressedIds();
++		const desired = new Set(
++			(await this.workflowRepository.getActiveIds()).filter((id) => !suppressed.has(id)),
++		);
+ 
+ 		const candidates = registered.filter((workflowId) => !desired.has(workflowId));
+ 
+@@ -250,7 +254,12 @@ export class WorkflowPublicationReconciler {
+ 					fn: async () => {
+ 						const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
+ 
+-						if (workflow?.activeVersionId) return;
++						if (
++							workflow?.activeVersionId &&
++							!(await Container.get(PublicationSuppression).isSuppressed(workflowId))
++						) {
++							return;
++						}
+ 						if (await this.outboxRepository.findInFlightByWorkflowId(workflowId)) return;
+ 
+ 						await this.activeWorkflowTriggers.remove(workflowId);
+diff --git a/packages/frontend/@n8n/frontend-module-sdk/src/index.ts b/packages/frontend/@n8n/frontend-module-sdk/src/index.ts
+index 2585a7c391..c2fa5065c2 100644
+--- a/packages/frontend/@n8n/frontend-module-sdk/src/index.ts
++++ b/packages/frontend/@n8n/frontend-module-sdk/src/index.ts
+@@ -12,6 +12,7 @@ export * as commandRegistry from './registries/commandRegistry';
+ export * as componentRegistry from './registries/componentRegistry';
+ export * as parameterInputRegistry from './registries/parameterInputRegistry';
+ export * as capabilityRegistry from './registries/capabilityRegistry';
++export * as uiExtensionRegistry from './registries/uiExtensionRegistry';
+ 
+ // Namespaced so a token does not clash with a same-named local const in the shell.
+ export * as capabilities from './capabilities';
+diff --git a/packages/frontend/@n8n/frontend-module-sdk/src/types/descriptor.ts b/packages/frontend/@n8n/frontend-module-sdk/src/types/descriptor.ts
+index 2a7fa1b565..8d7ff6dee1 100644
+--- a/packages/frontend/@n8n/frontend-module-sdk/src/types/descriptor.ts
++++ b/packages/frontend/@n8n/frontend-module-sdk/src/types/descriptor.ts
+@@ -14,6 +14,7 @@ import type { RunDataDisplayModeContribution } from './runDataDisplayMode';
+ import type { ModuleSetupContext } from './setup';
+ import type { ModuleShortcut } from './shortcut';
+ import type { DynamicTabOptions } from './tabs';
++import type { ModuleUiExtensions } from './uiExtension';
+ 
+ /** A key of `settings.enterprise`, e.g. `'logStreaming'`. */
+ export type ModuleLicenseFlag = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
+@@ -108,6 +109,11 @@ export type FrontendModuleDescription = {
+ 	runDataDisplayModes?: RunDataDisplayModeContribution[];
+ 	/** Banners the module can contribute to the banner stack. */
+ 	banners?: ModuleBanner[];
++	/**
++	 * UI the module adds to existing shell pages (workflow cards, folder cards, the executions
++	 * list and its filter). Read only while the module is active.
++	 */
++	uiExtensions?: ModuleUiExtensions;
+ 	/** Runs post-login, after the module is confirmed active. */
+ 	setup?: (ctx: ModuleSetupContext) => void | Promise<void>;
+ };
+diff --git a/packages/frontend/@n8n/frontend-module-sdk/src/types/index.ts b/packages/frontend/@n8n/frontend-module-sdk/src/types/index.ts
+index 42cba8d74e..3012f0848b 100644
+--- a/packages/frontend/@n8n/frontend-module-sdk/src/types/index.ts
++++ b/packages/frontend/@n8n/frontend-module-sdk/src/types/index.ts
+@@ -12,3 +12,4 @@ export type * from './banner';
+ export type * from './setup';
+ export type * from './locale';
+ export type * from './capability';
++export type * from './uiExtension';
+diff --git a/packages/frontend/@n8n/frontend-module-sdk/src/types/tabs.ts b/packages/frontend/@n8n/frontend-module-sdk/src/types/tabs.ts
+index 8f70f050cf..178b24c8f3 100644
+--- a/packages/frontend/@n8n/frontend-module-sdk/src/types/tabs.ts
++++ b/packages/frontend/@n8n/frontend-module-sdk/src/types/tabs.ts
+@@ -8,7 +8,14 @@ export type DynamicTabOptions = TabOptions<string> & {
+ 	dynamicRoute?: {
+ 		name: string;
+ 		includeProjectId?: boolean;
++		/** Query string for the link, e.g. a pre-set list filter. */
++		query?: Record<string, string>;
+ 	};
++	/**
++	 * Mark the tab as selected for this route, ahead of the shell's own route-name match.
++	 * Use it when the tab shares a route with another tab and differs by query.
++	 */
++	isActive?: (route: { name?: unknown; query: Record<string, unknown> }) => boolean;
+ 	/**
+ 	 * Insert this tab immediately after the tab whose `value` matches.
+ 	 * If unset (or no match is found at render time), the tab is appended at the end.
+diff --git a/packages/frontend/editor-ui/src/app/components/WorkflowCard.test.ts b/packages/frontend/editor-ui/src/app/components/WorkflowCard.test.ts
+index eb964809e5..4eb1fbe1bb 100644
+--- a/packages/frontend/editor-ui/src/app/components/WorkflowCard.test.ts
++++ b/packages/frontend/editor-ui/src/app/components/WorkflowCard.test.ts
+@@ -1,3 +1,5 @@
++import { defineComponent, h } from 'vue';
++import { uiExtensionRegistry } from '@n8n/frontend-module-sdk';
+ import type { Mock, MockInstance } from 'vitest';
+ import { waitFor, within } from '@testing-library/vue';
+ import userEvent from '@testing-library/user-event';
+@@ -1627,6 +1629,56 @@ describe('WorkflowCard', () => {
+ 		});
+ 	});
+ 
++	describe('module extensions', () => {
++		const Action = defineComponent({
++			props: { workflow: { type: Object, required: true } },
++			render() {
++				return h('span', { 'data-test-id': 'ext-action' }, (this.workflow as { id: string }).id);
++			},
++		});
++		const onSelect = vi.fn().mockResolvedValue(true);
++
++		beforeEach(() => {
++			uiExtensionRegistry.clear();
++			onSelect.mockClear();
++		});
++		afterEach(() => uiExtensionRegistry.clear());
++
++		it('renders contributed actions with the workflow', () => {
++			uiExtensionRegistry.registerAll({ workflowCardActions: [Action] });
++
++			const { getByTestId } = renderComponent({ props: { data: createWorkflow() } });
++
++			expect(getByTestId('ext-action')).toHaveTextContent('1');
++		});
++
++		it('adds contributed items to the menu and hands the selection to the module', async () => {
++			uiExtensionRegistry.registerAll({
++				workflowCardMenu: [
++					{
++						items: (workflow) => [{ label: `Run ${workflow.name}`, value: 'ext:run' }],
++						onSelect,
++					},
++				],
++			});
++
++			const { getByTestId } = renderComponent({ props: { data: createWorkflow() } });
++			const opener = within(getByTestId('workflow-card-actions')).getByRole('button');
++			const menuId = opener.getAttribute('aria-controls');
++
++			await userEvent.click(opener);
++			const menu = document.querySelector<HTMLElement>(`#${menuId}`);
++			expect(menu).toHaveTextContent('Run My Workflow');
++
++			await userEvent.click(within(menu as HTMLElement).getByText('Run My Workflow'));
++
++			expect(onSelect).toHaveBeenCalledWith(
++				'ext:run',
++				expect.objectContaining({ id: '1', name: 'My Workflow', activeVersionId: 'v1' }),
++			);
++		});
++	});
++
+ 	describe('Publication status indicator', () => {
+ 		const renderCard = (overrides: Partial<WorkflowResource> = {}) =>
+ 			renderComponent({ props: { data: createWorkflow(overrides) } });
+diff --git a/packages/frontend/editor-ui/src/app/components/WorkflowCard.vue b/packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+index 17a5527d4d..705a682733 100644
+--- a/packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
++++ b/packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+@@ -36,6 +36,7 @@ import {
+ import type { PathItem } from '@n8n/design-system';
+ import { useFoldersStore } from '@/features/core/folders/folders.store';
+ import { useFavoritesStore } from '@/app/stores/favorites.store';
++import { useModuleUiExtensions } from '@/app/composables/useModuleUiExtensions';
+ 
+ import {
+ 	N8nActionToggle,
+@@ -145,6 +146,17 @@ const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toL
+ const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
+ const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
+ 
++// What active modules add to the card (see `ModuleUiExtensions`)
++const { workflowCardActions, workflowCardMenu } = useModuleUiExtensions();
++const extensionWorkflow = computed(() => ({
++	id: props.data.id,
++	name: props.data.name,
++	activeVersionId: props.data.activeVersionId,
++	isArchived: props.data.isArchived,
++	readOnly: props.readOnly,
++	scopes: props.data.scopes,
++}));
++
+ const globalPermissions = computed(
+ 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).workflow,
+ );
+@@ -212,6 +224,10 @@ const actions = computed(() => {
+ 		value: WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
+ 	});
+ 
++	for (const contribution of workflowCardMenu.value) {
++		items.push(...contribution.items(extensionWorkflow.value));
++	}
++
+ 	if (
+ 		workflowPermissions.value.read &&
+ 		canCreateWorkflow.value &&
+@@ -476,6 +492,10 @@ async function onAction(action: string) {
+ 		case WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE:
+ 			await favoritesStore.toggleFavorite(props.data.id, 'workflow');
+ 			break;
++		default:
++			for (const contribution of workflowCardMenu.value) {
++				if (await contribution.onSelect(action, extensionWorkflow.value)) break;
++			}
+ 	}
+ }
+ 
+@@ -818,6 +838,12 @@ const tags = computed(
+ 				/>
+ 				<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+ 				<OpenInAssistantCardButton :workflow="data" :read-only="readOnly" />
++				<component
++					:is="extension"
++					v-for="(extension, index) in workflowCardActions"
++					:key="index"
++					:workflow="extensionWorkflow"
++				/>
+ 				<N8nActionToggle
+ 					:actions="actions"
+ 					placement="bottom-end"
+diff --git a/packages/frontend/editor-ui/src/app/init/index.test.ts b/packages/frontend/editor-ui/src/app/init/index.test.ts
+index a892502c59..a1b19e1de9 100644
+--- a/packages/frontend/editor-ui/src/app/init/index.test.ts
++++ b/packages/frontend/editor-ui/src/app/init/index.test.ts
+@@ -47,6 +47,7 @@ vi.mock('@/app/moduleInitializer/moduleInitializer', async (importOriginal) => {
+ 		registerModuleModals: vi.fn(actual.registerModuleModals),
+ 		registerModuleSettingsPages: vi.fn(actual.registerModuleSettingsPages),
+ 		registerModulePushHandlers: vi.fn(actual.registerModulePushHandlers),
++		registerModuleUiExtensions: vi.fn(actual.registerModuleUiExtensions),
+ 		registerModuleCommands: vi.fn(actual.registerModuleCommands),
+ 		registerModuleParameterInputs: vi.fn(actual.registerModuleParameterInputs),
+ 	};
+@@ -58,6 +59,7 @@ const moduleRegistrations = [
+ 	moduleInitializer.registerModuleModals,
+ 	moduleInitializer.registerModuleSettingsPages,
+ 	moduleInitializer.registerModulePushHandlers,
++	moduleInitializer.registerModuleUiExtensions,
+ 	moduleInitializer.registerModuleCommands,
+ 	moduleInitializer.registerModuleParameterInputs,
+ ];
+diff --git a/packages/frontend/editor-ui/src/app/init/index.ts b/packages/frontend/editor-ui/src/app/init/index.ts
+index 6fcb62fd48..21f1b1a315 100644
+--- a/packages/frontend/editor-ui/src/app/init/index.ts
++++ b/packages/frontend/editor-ui/src/app/init/index.ts
+@@ -16,6 +16,7 @@ import {
+ 	registerModuleProjectTabs,
+ 	registerModulePushHandlers,
+ 	registerModuleResources,
++	registerModuleUiExtensions,
+ 	registerModuleSettingsPages,
+ } from '@/app/moduleInitializer/moduleInitializer';
+ import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+@@ -279,6 +280,7 @@ export async function initializeAuthenticatedFeatures(
+ 	registerExperimentModals();
+ 	registerModuleSettingsPages();
+ 	registerModulePushHandlers();
++	registerModuleUiExtensions();
+ 	registerModuleCommands();
+ 	registerModuleParameterInputs();
+ 
+diff --git a/packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts b/packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
+index d760b96f42..f606f5ce15 100644
+--- a/packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
++++ b/packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
+@@ -7,6 +7,7 @@ import {
+ 	pushHandlerRegistry,
+ 	commandRegistry,
+ 	parameterInputRegistry,
++	uiExtensionRegistry,
+ } from '@n8n/frontend-module-sdk';
+ import { VIEWS } from '@/app/constants';
+ import { modules } from '@/app/modules.manifest';
+@@ -129,6 +130,19 @@ export const registerModulePushHandlers = () => {
+ 	});
+ };
+ 
++/**
++ * Initialize what modules add to existing pages (workflow cards, folder cards, the executions
++ * list), done in init.ts. Only an active module contributes: its backend is what the UI talks to.
++ */
++export const registerModuleUiExtensions = () => {
++	const settingsStore = useSettingsStore();
++	modules.forEach((module) => {
++		if (module.uiExtensions && settingsStore.isModuleActive(module.id)) {
++			uiExtensionRegistry.registerAll(module.uiExtensions);
++		}
++	});
++};
++
+ /**
+  * Initialize module command-bar contributions, done in init.ts.
+  */
+diff --git a/packages/frontend/editor-ui/src/app/utils/modules/tabUtils.test.ts b/packages/frontend/editor-ui/src/app/utils/modules/tabUtils.test.ts
+index 7a26cdb92e..4464df27de 100644
+--- a/packages/frontend/editor-ui/src/app/utils/modules/tabUtils.test.ts
++++ b/packages/frontend/editor-ui/src/app/utils/modules/tabUtils.test.ts
+@@ -44,4 +44,18 @@ describe('processDynamicTabs', () => {
+ 		expect(tab.to).toEqual({ name: 'ProjectApps', params: { projectId: 'project-1' } });
+ 		expect(tab).not.toHaveProperty('dynamicRoute');
+ 	});
++
++	it('passes the query of a dynamic route on to the link', () => {
++		const [tab] = processDynamicTabs([
++			{
++				label: 'Published',
++				value: 'published',
++				dynamicRoute: { name: 'WorkflowsView', query: { status: 'true' } },
++				isActive: () => true,
++			},
++		]);
++
++		expect(tab.to).toEqual({ name: 'WorkflowsView', query: { status: 'true' } });
++		expect(tab).not.toHaveProperty('isActive');
++	});
+ });
+diff --git a/packages/frontend/editor-ui/src/app/utils/modules/tabUtils.ts b/packages/frontend/editor-ui/src/app/utils/modules/tabUtils.ts
+index dac4d7b6e3..3b527371a2 100644
+--- a/packages/frontend/editor-ui/src/app/utils/modules/tabUtils.ts
++++ b/packages/frontend/editor-ui/src/app/utils/modules/tabUtils.ts
+@@ -9,7 +9,7 @@ export type ProcessedDynamicTab = TabOptions<string> & { insertAfter?: string };
+  * Resolves dynamic routes with project IDs and other parameters
+  */
+ export function processDynamicTab(tab: DynamicTabOptions, projectId?: string): ProcessedDynamicTab {
+-	const { available: _available, dynamicRoute, ...staticTab } = tab;
++	const { available: _available, isActive: _isActive, dynamicRoute, ...staticTab } = tab;
+ 	if (!dynamicRoute) {
+ 		return staticTab;
+ 	}
+@@ -22,6 +22,10 @@ export function processDynamicTab(tab: DynamicTabOptions, projectId?: string): P
+ 		tabRoute.params = { projectId };
+ 	}
+ 
++	if (dynamicRoute.query) {
++		tabRoute.query = dynamicRoute.query;
++	}
++
+ 	return {
+ 		...staticTab,
+ 		to: tabRoute,
+diff --git a/packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts b/packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+index 9a6c5a7f71..2afd62b955 100644
+--- a/packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
++++ b/packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+@@ -287,6 +287,24 @@ describe('WorkflowsView', () => {
+ 			);
+ 		});
+ 
++		it('should search across all folders when a status filter is active', async () => {
++			await router.replace({ path: '/projects/project-1/workflows', query: { status: 'true' } });
++			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
++
++			renderComponent({ pinia });
++			await waitAllPromises();
++
++			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenLastCalledWith(
++				undefined,
++				expect.any(Number),
++				expect.any(Number),
++				expect.any(String),
++				expect.objectContaining({ active: true, parentFolderId: undefined }),
++				false,
++				expect.any(Boolean),
++			);
++		});
++
+ 		it('should scope search to current folder when inside a folder', async () => {
+ 			await router.replace({ path: '/project-1/folders/folder-1', query: { search: 'test' } });
+ 
+@@ -353,6 +371,43 @@ describe('WorkflowsView', () => {
+ 			);
+ 		});
+ 
++		it('should follow a status query change made while the page is open', async () => {
++			await router.replace({ query: {} });
++			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
++
++			renderComponent({ pinia });
++			await waitAllPromises();
++			workflowsListStore.fetchWorkflowsPage.mockClear();
++
++			await router.replace({ query: { status: 'true' } });
++			await waitAllPromises();
++
++			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenLastCalledWith(
++				expect.any(String),
++				expect.any(Number),
++				expect.any(Number),
++				expect.any(String),
++				expect.objectContaining({ active: true, isArchived: false }),
++				false,
++				expect.any(Boolean),
++			);
++
++			workflowsListStore.fetchWorkflowsPage.mockClear();
++
++			await router.replace({ query: {} });
++			await waitAllPromises();
++
++			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenLastCalledWith(
++				expect.any(String),
++				expect.any(Number),
++				expect.any(Number),
++				expect.any(String),
++				expect.objectContaining({ active: undefined, isArchived: false }),
++				expect.any(Boolean),
++				expect.any(Boolean),
++			);
++		});
++
+ 		it('should set deactivated status filter based on query parameters', async () => {
+ 			await router.replace({ query: { status: 'false' } });
+ 
+diff --git a/packages/frontend/editor-ui/src/app/views/WorkflowsView.vue b/packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+index 416446d5e1..f121362d95 100644
+--- a/packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
++++ b/packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+@@ -674,6 +674,23 @@ watch(
+ 	},
+ );
+ 
++// A module tab can link to this page with a pre-set status filter (e.g. "Published"). The route
++// stays the same, so only the query changes: follow it.
++watch(
++	() => route.query.status,
++	async (status) => {
++		const next =
++			status === 'true'
++				? StatusFilter.ACTIVE
++				: status === 'false'
++					? StatusFilter.DEACTIVATED
++					: StatusFilter.ALL;
++		if (next === filters.value.status) return;
++		filters.value.status = next;
++		await fetchWorkflows();
++	},
++);
++
+ sourceControlStore.$onAction(({ name, after }) => {
+ 	if (name !== 'pullWorkfolder') return;
+ 	after(async () => await initialize());
+@@ -982,8 +999,8 @@ const getParentFolderId = (routeId?: string) => {
+ 		return undefined;
+ 	}
+ 
+-	// If filtering by tags, search across all folders
+-	if (filters.value.tags.length > 0) {
++	// If filtering by tags or by status (e.g. only published), search across all folders
++	if (filters.value.tags.length > 0 || filters.value.status !== StatusFilter.ALL) {
+ 		return undefined;
+ 	}
+ 
+@@ -1134,6 +1151,7 @@ const setFiltersFromQueryString = async () => {
+ 		filters.value.status = status === 'true' ? StatusFilter.ACTIVE : StatusFilter.DEACTIVATED;
+ 	} else {
+ 		delete newQuery.status;
++		filters.value.status = StatusFilter.ALL;
+ 	}
+ 
+ 	// Handle sort
+diff --git a/packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue b/packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue
+index 1de2d406f1..5a59336737 100644
+--- a/packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue
++++ b/packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue
+@@ -142,8 +142,14 @@ const options = computed<Array<TabOptions<string>>>(() => {
+ });
+ 
+ watch(
+-	() => route?.name,
++	() => [route?.name, route?.query],
+ 	() => {
++		// A module tab that shares a route with another tab (told apart by query) wins
++		const activeModuleTab = props.additionalTabs.find((tab) => tab.isActive?.(route));
++		if (activeModuleTab) {
++			selectedTab.value = activeModuleTab.value;
++			return;
++		}
+ 		// Select workflows tab if folders tab is selected
+ 		selectedTab.value =
+ 			route.name === VIEWS.PROJECTS_FOLDERS ? VIEWS.PROJECTS_WORKFLOWS : route.name;
+diff --git a/packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue b/packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue
+index 55cdde6482..f5ad6c6b72 100644
+--- a/packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue
++++ b/packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue
+@@ -10,6 +10,7 @@ import { ResourceType } from '@/features/collaboration/projects/projects.utils';
+ import type { PathItem } from '@n8n/design-system';
+ import { useFoldersStore } from '../folders.store';
+ import { useFavoritesStore } from '@/app/stores/favorites.store';
++import { useModuleUiExtensions } from '@/app/composables/useModuleUiExtensions';
+ import { type IUser } from 'n8n-workflow';
+ import TimeAgo from '@/app/components/TimeAgo.vue';
+ import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+@@ -69,6 +70,17 @@ const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {
+ 
+ const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
+ 
++// What active modules add to the card (see `ModuleUiExtensions`): a toggle that shows a
++// module's content under the card, e.g. the folder's workflows.
++const { folderCardToggle, folderCardContent } = useModuleUiExtensions();
++const expanded = ref(false);
++const extensionFolder = computed(() => ({
++	id: props.data.id,
++	name: props.data.name,
++	workflowCount: props.data.workflowCount,
++	projectId: route.params.projectId ? String(route.params.projectId) : props.data.homeProject?.id,
++}));
++
+ const resourceTypeLabel = computed(() => i18n.baseText('generic.folder').toLowerCase());
+ 
+ const mcpAccessAction = computed<FolderCardAction>(() => ({
+@@ -219,6 +231,16 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
+ 		<RouterLink :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
+ 			<N8nCard :class="$style.card" hoverable>
+ 				<template #prepend>
++					<span v-if="folderCardToggle.length" @click.stop.prevent>
++						<component
++							:is="extension"
++							v-for="(extension, index) in folderCardToggle"
++							:key="index"
++							:folder="extensionFolder"
++							:expanded="expanded"
++							@toggle="expanded = !expanded"
++						/>
++					</span>
+ 					<N8nIcon
+ 						data-test-id="folder-card-icon"
+ 						size="xlarge"
+@@ -367,6 +389,15 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
+ 				</template>
+ 			</N8nCard>
+ 		</RouterLink>
++		<template v-if="expanded">
++			<component
++				:is="extension"
++				v-for="(extension, index) in folderCardContent"
++				:key="index"
++				:folder="extensionFolder"
++				:published-only="route.query.status === 'true'"
++			/>
++		</template>
+ 	</div>
+ </template>
+ 
+diff --git a/packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.test.ts b/packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.test.ts
+index 6e3a5d4061..57515cff8c 100644
+--- a/packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.test.ts
++++ b/packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.test.ts
+@@ -47,6 +47,7 @@ const defaultFilterState: ExecutionFilterType = {
+ 	metadata: [{ key: '', value: '', exactMatch: false }],
+ 	vote: 'all',
+ 	workflowVersionId: 'all',
++	ext: {},
+ };
+ 
+ const workflowDataFactory = (): IWorkflowShortResponse => ({
+diff --git a/packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue b/packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue
+index b6d13a3735..383e8ac46a 100644
+--- a/packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue
++++ b/packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue
+@@ -8,6 +8,7 @@ import type { IWorkflowDb, IWorkflowShortResponse } from '@/Interface';
+ import type { ExecutionFilterMetadata, ExecutionFilterType } from '../executions.types';
+ import { i18n as locale } from '@n8n/i18n';
+ import { useSettingsStore } from '@n8n/stores/settings.store';
++import { useModuleUiExtensions } from '@/app/composables/useModuleUiExtensions';
+ import { makeRestApiRequest } from '@n8n/rest-api-client';
+ import { useRootStore } from '@n8n/stores/useRootStore';
+ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+@@ -41,6 +42,7 @@ export type ExecutionFilterProps = {
+ const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
+ 
+ const settingsStore = useSettingsStore();
++const { executionFilterFields } = useModuleUiExtensions();
+ const rootStore = useRootStore();
+ const { debounce } = useDebounce();
+ 
+@@ -75,6 +77,7 @@ const getDefaultFilter = (): ExecutionFilterType => ({
+ 	metadata: [{ key: '', value: '', exactMatch: false }],
+ 	vote: 'all',
+ 	workflowVersionId: 'all',
++	ext: {},
+ });
+ // Copy, so nested edits do not change the caller's filters before this component emits them.
+ const filter = reactive({ ...getDefaultFilter(), ...cloneDeep(props.initialFilters) });
+@@ -159,6 +162,7 @@ const countSelectedFilterProps = computed(() => {
+ 		!isEmpty(filter.annotationTags),
+ 		filter.vote !== 'all',
+ 		filter.workflowVersionId !== 'all',
++		...Object.values(filter.ext ?? {}).map((value) => value !== undefined && value !== ''),
+ 		!isEmpty(filter.metadata),
+ 		!!filter.startDate,
+ 		!!filter.endDate,
+@@ -290,6 +294,9 @@ onBeforeMount(() => {
+ 						/>
+ 					</N8nSelect>
+ 				</div>
++				<div v-for="(extension, index) in executionFilterFields" :key="index" :class="$style.group">
++					<component :is="extension" v-model="filter.ext" />
++				</div>
+ 				<div :class="$style.group">
+ 					<label for="execution-filter-start-date">{{
+ 						locale.baseText('executionsFilter.start')
+diff --git a/packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue b/packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+index 0d910d0572..363c611135 100644
+--- a/packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
++++ b/packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+@@ -3,6 +3,7 @@ import ExecutionsTime from '../ExecutionsTime.vue';
+ import GlobalExecutionsListItemQueuedTooltip from './GlobalExecutionsListItemQueuedTooltip.vue';
+ import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
+ import { useI18n } from '@n8n/i18n';
++import { useModuleUiExtensions } from '@/app/composables/useModuleUiExtensions';
+ import { VIEWS } from '@/app/constants';
+ import type { PermissionsRecord } from '@n8n/permissions';
+ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+@@ -58,6 +59,8 @@ const isStopping = ref(false);
+ 
+ const isRunning = computed(() => props.execution.status === 'running');
+ 
++const { executionRowCells } = useModuleUiExtensions();
++
+ const isWaitTillIndefinite = computed(() => {
+ 	if (!props.execution.waitTill) {
+ 		return false;
+@@ -313,6 +316,12 @@ async function handleActionItemClick(commandData: Command) {
+ 			>
+ 				<N8nIcon icon="messages-square" />
+ 			</N8nTooltip>
++			<component
++				:is="extension"
++				v-for="(extension, index) in executionRowCells"
++				:key="index"
++				:execution="execution"
++			/>
+ 			<PrivateCredentialIcon
+ 				v-if="execution.usedPrivateCredentials"
+ 				data-test-id="global-execution-private-credential"
+diff --git a/packages/frontend/editor-ui/src/features/execution/executions/executions.types.ts b/packages/frontend/editor-ui/src/features/execution/executions/executions.types.ts
+index 5a06bcb4c9..d52ebd669f 100644
+--- a/packages/frontend/editor-ui/src/features/execution/executions/executions.types.ts
++++ b/packages/frontend/editor-ui/src/features/execution/executions/executions.types.ts
+@@ -27,6 +27,8 @@ export type ExecutionFilterType = {
+ 	vote: ExecutionFilterVote;
+ 	metadata: ExecutionFilterMetadata[];
+ 	workflowVersionId: 'all' | string;
++	/** Filters owned by modules (see `executionFilterFields`), sent to the backend as `ext`. */
++	ext: Record<string, unknown>;
+ };
+ 
+ export type ExecutionsQueryFilter = {
+@@ -41,6 +43,7 @@ export type ExecutionsQueryFilter = {
+ 	annotationTags?: string[];
+ 	vote?: ExecutionFilterVote;
+ 	workflowVersionId?: string;
++	ext?: Record<string, unknown>;
+ };
+ 
+ export interface IExecutionBase {
+diff --git a/packages/frontend/editor-ui/src/features/execution/executions/executions.utils.test.ts b/packages/frontend/editor-ui/src/features/execution/executions/executions.utils.test.ts
+index 463eeeb71d..10ba6c65d4 100644
+--- a/packages/frontend/editor-ui/src/features/execution/executions/executions.utils.test.ts
++++ b/packages/frontend/editor-ui/src/features/execution/executions/executions.utils.test.ts
+@@ -146,6 +146,16 @@ describe('executionFilterToQueryFilter()', () => {
+ 			expect.arrayContaining(['new']),
+ 		);
+ 	});
++
++	it('sends module filters as `ext` and omits it when empty', () => {
++		expect(executionFilterToQueryFilter({ ext: { manualExecution: true } }).ext).toEqual({
++			manualExecution: true,
++		});
++		expect(executionFilterToQueryFilter({ ext: {} })).not.toHaveProperty('ext');
++		expect(executionFilterToQueryFilter({ ext: { manualExecution: false } }).ext).toEqual({
++			manualExecution: false,
++		});
++	});
+ });
+ 
+ describe('waitingNodeTooltip', () => {
+diff --git a/packages/frontend/editor-ui/src/features/execution/executions/executions.utils.ts b/packages/frontend/editor-ui/src/features/execution/executions/executions.utils.ts
+index fabcd3f550..8ae602cb83 100644
+--- a/packages/frontend/editor-ui/src/features/execution/executions/executions.utils.ts
++++ b/packages/frontend/editor-ui/src/features/execution/executions/executions.utils.ts
+@@ -62,6 +62,7 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
+ 		metadata: [],
+ 		vote: 'all',
+ 		workflowVersionId: 'all',
++		ext: {},
+ 	};
+ }
+ 
+@@ -85,6 +86,11 @@ export const executionFilterToQueryFilter = (
+ 		queryFilter.workflowVersionId = filter.workflowVersionId;
+ 	}
+ 
++	// Not `isEmpty`: it treats `false` as empty, and `{ manualExecution: false }` is a real filter.
++	if (filter.ext && Object.keys(filter.ext).length > 0) {
++		queryFilter.ext = filter.ext;
++	}
++
+ 	if (!isEmpty(filter.metadata)) {
+ 		queryFilter.metadata = filter.metadata;
+ 	}
+diff --git a/packages/workflow/src/interfaces.ts b/packages/workflow/src/interfaces.ts
+index b7d8aa259e..d0033ce321 100644
+--- a/packages/workflow/src/interfaces.ts
++++ b/packages/workflow/src/interfaces.ts
+@@ -4465,6 +4465,8 @@ export interface ExecutionSummary {
+ 		[key: string]: IExecutionSummaryNodeExecutionResult;
+ 	};
+ 	usedPrivateCredentials?: boolean;
++	/** Fields added by modules through `ExecutionQueryExtensions`. */
++	ext?: Record<string, unknown>;
+ 	annotation?: {
+ 		vote?: AnnotationVote | null;
+ 		tags: Array<{
