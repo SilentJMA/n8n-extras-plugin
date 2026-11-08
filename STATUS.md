@@ -31,7 +31,9 @@ or tested. Every check is recorded in `compat/releases.tsv`.
 Run from a patched checkout with the editor UI built, signed in as a test owner:
 
 - Published tab on Overview and on a project page, including workflows inside folders.
-- Expandable folders (the instance had the folders feature enabled).
+- Expandable folders (the instance had the folders feature enabled): the chevron lists the folder's
+  workflows; clicking a workflow name opens it (breadcrumb shows its folder); clicking the folder card still
+  opens the folder.
 - Pause and resume: badge, button and toasts. The database showed the trigger mapping removed on pause and
   restored on resume, with the workflow staying published.
 - Execute from the `...` menu: created a manual execution that recorded who ran it.
@@ -53,8 +55,6 @@ vanilla n8n was not done, so this is not proven to be unrelated.
 - **Docker.** `docker/Dockerfile.extras` was written without Docker available and has never been built.
 - **The upstream-watch workflow on GitHub.** `scripts/watch-upstream.sh` was run locally against the real
   GitHub API; the Actions workflow that calls it has not run on GitHub yet.
-- **Clicking through from the folder.** Opening a workflow from the expanded folder list, and the folder
-  card itself, were not clicked in the browser.
 - **A trigger actually firing.** Pause was confirmed through the database, but no scheduled run was observed
   being skipped while paused.
 - **PostgreSQL.** Tests ran on SQLite only. The migration uses n8n's schema builder but was not run on
