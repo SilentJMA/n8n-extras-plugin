@@ -55,7 +55,9 @@ jobs:
 
       - name: Install dependencies
         working-directory: n8n
-        run: pnpm install
+        # The overlay adds a workspace package, so the lockfile no longer matches. CI makes
+        # pnpm default to --frozen-lockfile, which then fails; allow it to update the lockfile.
+        run: pnpm install --no-frozen-lockfile
 
       - name: Work out the image name and tag
         id: img
