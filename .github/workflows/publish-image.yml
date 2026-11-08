@@ -1,0 +1,97 @@
+name: Publish image to GHCR
+
+# Build an n8n image with the plugin baked in (overlay + seams) and push it to GitHub Container
+# Registry, so users only pull `ghcr.io/<owner>/n8n-extras` instead of building n8n themselves.
+# The image is official n8n plus the plugin; it does NOT contain the Data Mapper node — a user
+# installs the community node `n8n-nodes-data-mapper` from the n8n UI, so it lives in the data volume.
+#
+# Run it from the Actions tab (Run workflow). Building n8n from source is a heavy job (tens of
+# minutes). This workflow has not been run yet; the first run proves it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      n8n_ref:
+        description: 'n8n git ref to build from (default: the pinned commit in UPSTREAM)'
+        required: false
+        default: ''
+      image_tag:
+        description: "image tag (default: the n8n version, e.g. 2.47.0). ':latest' is added too."
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the plugin
+        uses: actions/checkout@v4
+        with:
+          path: plugin
+
+      - name: Resolve the n8n ref
+        id: ref
+        run: |
+          ref="${{ github.event.inputs.n8n_ref }}"
+          [ -n "$ref" ] || ref="$(sed -n 's/^commit=//p' plugin/UPSTREAM)"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Clone n8n at that ref
+        run: |
+          git clone --filter=blob:none https://github.com/n8n-io/n8n.git n8n
+          cd n8n && git checkout "${{ steps.ref.outputs.ref }}"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+
+      - name: Apply the plugin to the checkout
+        run: plugin/scripts/apply.sh "$GITHUB_WORKSPACE/n8n"
+
+      - name: Install dependencies
+        working-directory: n8n
+        run: pnpm install
+
+      - name: Work out the image name and tag
+        id: img
+        run: |
+          owner="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          base="ghcr.io/$owner/n8n-extras"
+          tag="${{ github.event.inputs.image_tag }}"
+          [ -n "$tag" ] || tag="$(node -p "require('./n8n/package.json').version")"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build n8n from source and push the image
+        working-directory: n8n
+        env:
+          # A registry host in the name makes n8n's dockerize script push instead of load.
+          # The runners image keeps its default (hostless) name, so only this image is pushed.
+          IMAGE_BASE_NAME: ${{ steps.img.outputs.base }}
+          IMAGE_TAG: ${{ steps.img.outputs.tag }}
+        run: pnpm build:docker
+
+      - name: Add the :latest tag
+        run: |
+          docker buildx imagetools create \
+            -t "${{ steps.img.outputs.base }}:latest" \
+            "${{ steps.img.outputs.base }}:${{ steps.img.outputs.tag }}"
+
+      - name: Summary
+        run: |
+          echo "Pushed ${{ steps.img.outputs.base }}:${{ steps.img.outputs.tag }} and :latest" >> "$GITHUB_STEP_SUMMARY"
+          echo "Users pull it, then install n8n-nodes-data-mapper from Settings > Community nodes." >> "$GITHUB_STEP_SUMMARY"

@@ -56,9 +56,14 @@ engine, then export.
 
 ## Docker
 
-n8n builds its own image from a checkout with `pnpm build:docker`. Apply the plugin first and build the
-image from the patched checkout: the module is then part of the image, with nothing extra to copy in. Install
-the community node inside the running container (or bake it into the image) to use the Visual Data Mapper.
+The easy way is the **prebuilt image** `ghcr.io/silentjma/n8n-extras:latest` — official n8n with the plugin
+baked in. Pull it, mount a data volume, and install the community node from the UI. See [Unraid](unraid.md),
+which applies to any Docker host.
+
+To build it yourself, `scripts/build-image.sh <n8n-dir> [image:tag]` applies the overlay and runs n8n's own
+`pnpm build:docker`, so the module is part of the image. Either way the image does not ship the Data Mapper
+node; install the community node `n8n-nodes-data-mapper` from **Settings > Community nodes** in the running
+instance, so it lives in the data volume.
 
 ## Check that it works
 

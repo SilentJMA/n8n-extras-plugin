@@ -7,7 +7,7 @@ n8n-extras-plugin/
 ├── overlay/              New files, copied into an n8n checkout (mirrors n8n's own paths)
 ├── patches/
 │   └── core-seams.patch  Edits to existing n8n files: the generic seams
-├── scripts/              apply, check, upgrade, watch, export, sync-data-mapper-engine
+├── scripts/              apply, check, upgrade, watch, export, sync-data-mapper-engine, build-image
 ├── compat/               releases.tsv (check results) and MIN_VERSION
 ├── docs/                 This documentation
 ├── wiki/                 The same pages, shaped for the GitHub wiki

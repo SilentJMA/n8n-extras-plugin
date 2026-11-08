@@ -4,6 +4,7 @@
 - [Installation](Installation)
 - [Architecture](Architecture)
 - [Compatibility](Compatibility)
+- [Unraid](Unraid)
 - [Updating](Updating)
 - [REST API](REST-API)
 - [Development](Development)

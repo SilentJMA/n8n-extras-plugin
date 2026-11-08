@@ -77,6 +77,16 @@ Read more in [architecture](docs/architecture.md).
 
 ## Quick start
 
+**Just run it:** pull the prebuilt image — official n8n with the plugin baked in — and install the Data
+Mapper node from the UI. No building. See [Unraid / Docker](docs/unraid.md).
+
+```bash
+docker run -it --rm -p 5678:5678 -v n8n_data:/home/node/.n8n \
+  ghcr.io/silentjma/n8n-extras:latest
+```
+
+**Build from source** (for development, or your own registry):
+
 ```bash
 git clone https://github.com/n8n-io/n8n.git && cd n8n
 git checkout n8n@2.47.2
@@ -123,6 +133,7 @@ The full, automatically updated table is in [compatibility](docs/compatibility.m
 | [Installation](docs/installation.md) | Apply, build, the community node, Docker, uninstall. |
 | [Architecture](docs/architecture.md) | Seams, backend, frontend, data model, sequence diagrams. |
 | [Compatibility](docs/compatibility.md) | What it touches, switching it off, tested releases. |
+| [Unraid](docs/unraid.md) | Build the image, deploy on Unraid, install the Data Mapper node. |
 | [Updating](docs/updating.md) | Release watching and upgrading. |
 | [REST API](docs/api.md) | Endpoints and execution filters. |
 | [Development](docs/development.md) | Layout, working loop, tests, rules for the seams. |
@@ -135,7 +146,7 @@ The same pages are available as a wiki. [AGENT.md](AGENT.md) has guidance for au
 ```text
 overlay/    new files, mirroring n8n's paths
 patches/    core-seams.patch: the edits to existing n8n files
-scripts/    apply, check, upgrade, watch, export, sync the mapper engine
+scripts/    apply, check, upgrade, watch, export, sync the mapper engine, build the image
 compat/     releases.tsv and MIN_VERSION
 docs/       documentation          wiki/   the same pages for the wiki
 ```

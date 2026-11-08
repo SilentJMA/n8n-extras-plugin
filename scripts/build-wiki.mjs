@@ -35,6 +35,7 @@ const PAGES = {
 	'installation.md': 'Installation',
 	'architecture.md': 'Architecture',
 	'compatibility.md': 'Compatibility',
+	'unraid.md': 'Unraid',
 	'updating.md': 'Updating',
 	'api.md': 'REST-API',
 	'development.md': 'Development',
@@ -89,6 +90,7 @@ and a **Visual Data Mapper** for the community node [n8n-nodes-data-mapper](http
 | [Installation](Installation) | Apply, build, the community node, Docker, uninstall. |
 | [Architecture](Architecture) | The seams, the modules, the data model, sequence diagrams. |
 | [Compatibility](Compatibility) | What it touches, switching it off, tested releases. |
+| [Unraid](Unraid) | Build the image, deploy on Unraid, install the Data Mapper node. |
 | [Updating](Updating) | Automatic release watching and upgrading. |
 | [REST-API](REST-API) | Endpoints and execution filters. |
 | [Development](Development) | Layout, working loop, tests, rules for the seams. |
@@ -108,6 +110,7 @@ fs.writeFileSync(
 - [Installation](Installation)
 - [Architecture](Architecture)
 - [Compatibility](Compatibility)
+- [Unraid](Unraid)
 - [Updating](Updating)
 - [REST API](REST-API)
 - [Development](Development)
