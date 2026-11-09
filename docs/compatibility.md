@@ -56,8 +56,10 @@ It is a dry run, not a full build and test of that release.
 <!-- compat:start -->
 | n8n release | Result | Checked |
 | --- | --- | --- |
+| `n8n@2.47.3` | Applies cleanly | 2026-11-09 |
 | `n8n@2.47.2` | Applies cleanly | 2026-11-08 |
 | `n8n@2.47.0` | Applies cleanly | 2026-11-08 |
+| `n8n@2.46.7` | Older than the supported range | 2026-11-09 |
 | `n8n@2.46.6` | Older than the supported range | 2026-11-08 |
 <!-- compat:end -->
 
