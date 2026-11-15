@@ -1,7 +1,9 @@
 # Status
 
-Built and tested on n8n commit `3895cb31de5731c8425e56e56ff6f1dad1e2aa50`, which is `n8n@2.47.0` plus 39
-commits (see `UPSTREAM`). Supported from the version in `compat/MIN_VERSION`.
+Pinned to n8n commit `d4dcb1b152a98fc31ea7c4ee6aecdc45c5c88063` (`n8n@2.47.7`); see `UPSTREAM`.
+Supported from the version in `compat/MIN_VERSION`. The overlay applies cleanly to this release
+(`scripts/apply.sh --check`). The full build-and-test results below were taken on the earlier base
+`3895cb31` (`n8n@2.47.0` plus 39 commits); the image build runs the full build on the pinned release.
 
 ## Verified on a clean copy of the base commit
 
