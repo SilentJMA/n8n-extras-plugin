@@ -153,9 +153,9 @@ docs/       documentation          wiki/   the same pages for the wiki
 
 ## Status
 
-Pinned to n8n `2.47.7`, to which the overlay applies cleanly. The full build and test pass (including a
-browser pass) was taken on the earlier base `2.47.0` plus 39 commits; see [STATUS.md](STATUS.md) for what
-was verified and what was not (Docker, PostgreSQL).
+Pinned to n8n `2.47.7`, to which the overlay applies cleanly and builds from a clean checkout. The full
+test pass (including a browser pass) was taken on the earlier base `2.47.0` plus 39 commits; see
+[STATUS.md](STATUS.md) for what was verified and what was not (Docker, PostgreSQL).
 
 ## License
 
