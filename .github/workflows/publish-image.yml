@@ -5,10 +5,11 @@ name: Publish image to GHCR
 # The image is official n8n plus the plugin; it does NOT contain the Data Mapper node — a user
 # installs the community node `n8n-nodes-data-mapper` from the n8n UI, so it lives in the data volume.
 #
-# Run it from the Actions tab (Run workflow). Building n8n from source is a heavy job (tens of
-# minutes). This workflow has not been run yet; the first run proves it.
+# The scheduled run follows the latest stable n8n release. A manual run can build a specific ref.
 
 on:
+  schedule:
+    - cron: '30 3 * * *'
   workflow_dispatch:
     inputs:
       n8n_ref:
@@ -37,7 +38,13 @@ jobs:
         id: ref
         run: |
           ref="${{ github.event.inputs.n8n_ref }}"
-          [ -n "$ref" ] || ref="$(sed -n 's/^commit=//p' plugin/UPSTREAM)"
+          if [ -z "$ref" ]; then
+            ref="$(curl --fail --silent --show-error \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              https://api.github.com/repos/n8n-io/n8n/releases/latest | jq -r '.tag_name')"
+          fi
+          [ -n "$ref" ] && [ "$ref" != "null" ]
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
 
       - name: Clone n8n at that ref
@@ -66,6 +73,12 @@ jobs:
           base="ghcr.io/$owner/n8n-extras"
           tag="${{ github.event.inputs.image_tag }}"
           [ -n "$tag" ] || tag="$(node -p "require('./n8n/package.json').version")"
+          case "$tag" in
+            latest|*[!a-zA-Z0-9._-]*)
+              echo "Invalid image tag: $tag" >&2
+              exit 1
+              ;;
+          esac
           echo "base=$base" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
