@@ -56,13 +56,17 @@ It is a dry run, not a full build and test of that release.
 <!-- compat:start -->
 | n8n release | Result | Checked |
 | --- | --- | --- |
+| `n8n@2.47.3` | Applies cleanly | 2026-11-09 |
 | `n8n@2.47.2` | Applies cleanly | 2026-11-08 |
 | `n8n@2.47.0` | Applies cleanly | 2026-11-08 |
+| `n8n@2.46.7` | Older than the supported range | 2026-11-09 |
 | `n8n@2.46.6` | Older than the supported range | 2026-11-08 |
 <!-- compat:end -->
 
-The plugin was built and fully tested (build, typecheck, unit and integration tests, and a browser pass)
-on n8n `2.47.0` plus 39 commits (`3895cb31`). Releases older than the version in
+The overlay is pinned to `n8n@2.48.4` (`6825faa`, see `UPSTREAM`), applies cleanly to it, and builds from
+a clean checkout. `2.48.4` is n8n's `next`/`beta` channel (stable is `2.47.7`). The full test pass
+(typecheck, unit and integration tests, and a browser pass) was taken on the earlier base `n8n@2.47.0`
+plus 39 commits (`3895cb31`). Releases older than the version in
 [`compat/MIN_VERSION`](https://github.com/SilentJMA/n8n-extras-plugin/blob/main/compat/MIN_VERSION) are not supported.
 
 ## What to expect on a new n8n release
