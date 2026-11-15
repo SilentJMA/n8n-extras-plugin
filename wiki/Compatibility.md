@@ -53,14 +53,28 @@ The table below is updated automatically (see [updating](Updating)). "Applies cl
 patch and the module registration were applied to a clean checkout of that release without conflicts.
 It is a dry run, not a full build and test of that release.
 
+The seams patch is version-specific: it targets the pinned release (see `UPSTREAM`) and applies cleanly
+only to that release and to others that share the same code in the patched spots. "Needs attention"
+therefore marks a release that needs its own patch refresh, not a release the plugin cannot support —
+re-pin `UPSTREAM` to it and regenerate the patch (see [updating](Updating)) to add support.
+
 <!-- compat:start -->
 | n8n release | Result | Checked |
 | --- | --- | --- |
-| `n8n@2.47.3` | Applies cleanly | 2026-11-09 |
-| `n8n@2.47.2` | Applies cleanly | 2026-11-08 |
-| `n8n@2.47.0` | Applies cleanly | 2026-11-08 |
+| `n8n@3.2.2` | Applies cleanly | 2026-11-15 |
+| `n8n@3.2.0` | Needs attention | 2026-11-15 |
+| `n8n@2.48.4` | Applies cleanly | 2026-11-15 |
+| `n8n@2.48.2` | Needs attention | 2026-11-15 |
+| `n8n@2.48.1` | Needs attention | 2026-11-15 |
+| `n8n@2.47.7` | Needs attention | 2026-11-15 |
+| `n8n@2.47.5` | Needs attention | 2026-11-15 |
+| `n8n@2.47.4` | Needs attention | 2026-11-15 |
+| `n8n@2.47.3` | Needs attention | 2026-11-15 |
+| `n8n@2.47.2` | Needs attention | 2026-11-15 |
+| `n8n@2.47.0` | Needs attention | 2026-11-15 |
 | `n8n@2.46.7` | Older than the supported range | 2026-11-09 |
 | `n8n@2.46.6` | Older than the supported range | 2026-11-08 |
+| `n8n@1.123.93` | Older than the supported range | 2026-11-10 |
 <!-- compat:end -->
 
 The overlay is pinned to `n8n@2.48.4` (`6825faa`, see `UPSTREAM`), applies cleanly to it, and builds from
