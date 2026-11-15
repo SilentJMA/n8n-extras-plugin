@@ -2,9 +2,9 @@
 
 Pinned to n8n commit `6825faadda0254336b23b02a091fbf0e9baaddf7` (`n8n@2.48.4`); see `UPSTREAM`. This is
 n8n's `next`/`beta` channel at time of writing (stable is `2.47.7`). Supported from the version in
-`compat/MIN_VERSION`. The overlay applies cleanly to this release (`scripts/apply.sh --check`); a clean build on this base is
-being validated. The full test-suite results below (unit, integration, browser) were taken on the earlier
-base `3895cb31` (`n8n@2.47.0` plus 39 commits).
+`compat/MIN_VERSION`. The overlay applies cleanly to this release (`scripts/apply.sh --check`) and builds from a clean checkout
+(install + `pnpm build`, 78/78 tasks). The full test-suite results below (unit, integration, browser) were
+taken on the earlier base `3895cb31` (`n8n@2.47.0` plus 39 commits).
 
 ## Verified on a clean copy of the base commit
 
