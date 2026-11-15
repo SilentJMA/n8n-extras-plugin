@@ -56,11 +56,19 @@ It is a dry run, not a full build and test of that release.
 <!-- compat:start -->
 | n8n release | Result | Checked |
 | --- | --- | --- |
+| `n8n@3.2.2` | Needs attention | 2026-11-13 |
+| `n8n@3.2.0` | Needs attention | 2026-11-10 |
+| `n8n@2.48.2` | Needs attention | 2026-11-12 |
+| `n8n@2.48.1` | Needs attention | 2026-11-11 |
+| `n8n@2.47.7` | Needs attention | 2026-11-13 |
+| `n8n@2.47.5` | Applies cleanly | 2026-11-12 |
+| `n8n@2.47.4` | Applies cleanly | 2026-11-11 |
 | `n8n@2.47.3` | Applies cleanly | 2026-11-09 |
 | `n8n@2.47.2` | Applies cleanly | 2026-11-08 |
 | `n8n@2.47.0` | Applies cleanly | 2026-11-08 |
 | `n8n@2.46.7` | Older than the supported range | 2026-11-09 |
 | `n8n@2.46.6` | Older than the supported range | 2026-11-08 |
+| `n8n@1.123.93` | Older than the supported range | 2026-11-10 |
 <!-- compat:end -->
 
 The overlay is pinned to `n8n@2.48.4` (`6825faa`, see `UPSTREAM`), applies cleanly to it, and builds from
