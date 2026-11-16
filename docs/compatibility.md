@@ -74,6 +74,7 @@ re-pin `UPSTREAM` to it and regenerate the patch (see [updating](updating.md)) t
 | `n8n@2.47.0` | Needs attention | 2026-11-15 |
 | `n8n@2.46.7` | Older than the supported range | 2026-11-09 |
 | `n8n@2.46.6` | Older than the supported range | 2026-11-08 |
+| `n8n@1.123.97` | Older than the supported range | 2026-11-16 |
 | `n8n@1.123.93` | Older than the supported range | 2026-11-10 |
 <!-- compat:end -->
 
