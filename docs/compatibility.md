@@ -64,8 +64,10 @@ re-pin `UPSTREAM` to it and regenerate the patch (see [updating](updating.md)) t
 | `n8n@3.3.0` | Needs attention | 2026-11-17 |
 | `n8n@3.2.2` | Applies cleanly | 2026-11-15 |
 | `n8n@3.2.0` | Needs attention | 2026-11-15 |
+| `n8n@2.49.3` | Needs attention | 2026-11-20 |
 | `n8n@2.49.2` | Needs attention | 2026-11-19 |
 | `n8n@2.49.1` | Needs attention | 2026-11-18 |
+| `n8n@2.48.7` | Applies cleanly | 2026-11-20 |
 | `n8n@2.48.6` | Applies cleanly | 2026-11-19 |
 | `n8n@2.48.5` | Applies cleanly | 2026-11-18 |
 | `n8n@2.48.4` | Applies cleanly | 2026-11-15 |
