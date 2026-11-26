@@ -61,11 +61,13 @@ re-pin `UPSTREAM` to it and regenerate the patch (see [updating](updating.md)) t
 <!-- compat:start -->
 | n8n release | Result | Checked |
 | --- | --- | --- |
+| `n8n@3.4.1` | Needs attention | 2026-11-26 |
 | `n8n@3.4.0` | Needs attention | 2026-11-24 |
 | `n8n@3.3.0` | Needs attention | 2026-11-17 |
 | `n8n@3.2.2` | Applies cleanly | 2026-11-15 |
 | `n8n@3.2.0` | Needs attention | 2026-11-15 |
 | `n8n@2.50.1` | Needs attention | 2026-11-25 |
+| `n8n@2.49.7` | Needs attention | 2026-11-26 |
 | `n8n@2.49.6` | Needs attention | 2026-11-25 |
 | `n8n@2.49.5` | Needs attention | 2026-11-23 |
 | `n8n@2.49.3` | Needs attention | 2026-11-20 |
