@@ -61,8 +61,24 @@ re-pin `UPSTREAM` to it and regenerate the patch (see [updating](updating.md)) t
 <!-- compat:start -->
 | n8n release | Result | Checked |
 | --- | --- | --- |
+| `n8n@3.4.1` | Needs attention | 2026-11-26 |
+| `n8n@3.4.0` | Needs attention | 2026-11-24 |
+| `n8n@3.3.0` | Needs attention | 2026-11-17 |
 | `n8n@3.2.2` | Applies cleanly | 2026-11-15 |
 | `n8n@3.2.0` | Needs attention | 2026-11-15 |
+| `n8n@2.50.3` | Needs attention | 2026-11-27 |
+| `n8n@2.50.1` | Needs attention | 2026-11-25 |
+| `n8n@2.49.8` | Needs attention | 2026-11-27 |
+| `n8n@2.49.7` | Needs attention | 2026-11-26 |
+| `n8n@2.49.6` | Needs attention | 2026-11-25 |
+| `n8n@2.49.5` | Needs attention | 2026-11-23 |
+| `n8n@2.49.3` | Needs attention | 2026-11-20 |
+| `n8n@2.49.2` | Needs attention | 2026-11-19 |
+| `n8n@2.49.1` | Needs attention | 2026-11-18 |
+| `n8n@2.48.8` | Applies cleanly | 2026-11-23 |
+| `n8n@2.48.7` | Applies cleanly | 2026-11-20 |
+| `n8n@2.48.6` | Applies cleanly | 2026-11-19 |
+| `n8n@2.48.5` | Applies cleanly | 2026-11-18 |
 | `n8n@2.48.4` | Applies cleanly | 2026-11-15 |
 | `n8n@2.48.2` | Needs attention | 2026-11-15 |
 | `n8n@2.48.1` | Needs attention | 2026-11-15 |
@@ -74,6 +90,7 @@ re-pin `UPSTREAM` to it and regenerate the patch (see [updating](updating.md)) t
 | `n8n@2.47.0` | Needs attention | 2026-11-15 |
 | `n8n@2.46.7` | Older than the supported range | 2026-11-09 |
 | `n8n@2.46.6` | Older than the supported range | 2026-11-08 |
+| `n8n@1.123.97` | Older than the supported range | 2026-11-16 |
 | `n8n@1.123.93` | Older than the supported range | 2026-11-10 |
 <!-- compat:end -->
 
